@@ -1,0 +1,3 @@
+DECLARE @nid bigint  --Insert触发器 下面为inserted相当于触发器的一个虚拟插入表
+	select @nid= id from inserted
+	exec p_post @nid
