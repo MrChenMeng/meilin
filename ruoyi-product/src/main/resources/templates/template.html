@@ -1,0 +1,138 @@
+<div th:fragment="switch" xmlns:th="http://www.w3.org/1999/xhtml">
+    <span th:if="${temperatureList.size() != 0}">
+        <div class="ibox-content">
+        <div class="table-responsive">
+            <table id="tempTable" class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>生产产线</th>
+                        <th>机位</th>
+                        <th>温度设定</th>
+                        <th th:each="temperature:${temperatureList}"> [[${temperature.place}]] </th>
+                        <th> 操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td th:rowspan="${temperatureList.size() + set.size()*2}"  >[[${productLine.lineName}]]</td>
+                    </tr>
+
+                    <span th:if="${up}">
+                        <tr>
+                            <td  rowspan="2">上机</td>
+                            <td >开机前设定温度</td>
+                            <td th:each="temperature,temIndex:${temperatureList}" th:id="upavg + (${temperature.teId})"> [[${temperature.temperatureUpAvg}]]</td>
+                            <td><a class="btn btn-success btn-xs " onclick="editTemp('up','avg')"  shiro:hasPermission="product:template:edit"><i class="fa fa-edit" ></i>编辑</a></td>
+                        </tr>
+                        <tr>
+                            <td >开机后设定温度</td>
+                            <td th:each="temperature,temIndex:${temperatureList}" th:id="upact + (${temperature.teId})"> [[${temperature.temperatureUpAct}]] </td>
+                             <td><a class="btn btn-success btn-xs " onclick="editTemp('up','act')"  shiro:hasPermission="product:template:edit"><i class="fa fa-edit"></i>编辑</a></td>
+                        </tr>
+                    </span>
+
+
+                    <span th:if="${down}">
+                        <tr>
+                            <td  rowspan="2">下机</td>
+                            <td >开机前设定温度</td>
+                            <td th:each="temperature,temIndex:${temperatureList}" th:id="downavg + (${temperature.teId})"> [[${temperature.temperatureDownAvg}]] </td>
+                             <td><a class="btn btn-success btn-xs " onclick="editTemp('down','avg')"  shiro:hasPermission="product:template:edit"><i class="fa fa-edit"></i>编辑</a></td>
+                        </tr>
+                        <tr>
+                            <td >开机后设定温度</td>
+                            <td th:each="temperature,temIndex:${temperatureList}" th:id="downact + (${temperature.teId})"> [[${temperature.temperatureDownAct}]] </td>
+                             <td><a class="btn btn-success btn-xs " onclick="editTemp('down','act')"  shiro:hasPermission="product:template:edit"><i class="fa fa-edit"></i>编辑</a></td>
+                        </tr>
+                    </span>
+                </tbody>
+            </table>
+        </div>
+    </div>
+        <script th:inline="javascript">
+            var temps = [[${temperatureList}]]
+            var idStr = [];
+            var msg= '';
+            function editTemp(type,tep){
+                idStr = [];
+                for(var i =0;i < temps.length ; i ++){
+                    /*
+                    if(temps[i].productId == null || temps[i].productId ==''){
+                        return;
+                    }
+                    */
+                    if(type=="up" && tep=="avg"){
+                        if(temps[i].temperatureUpAvg=="——"){
+                            continue;
+                        }
+                        msg = "上机开机前设定";
+                    }else if(type=="up" && tep=="act"){
+                        if(temps[i].temperatureUpAct=="——"){
+                            continue;
+                        }
+                        msg = "上机开机后设定";
+                    }else if(type=="down" && tep=="avg"){
+                        if(temps[i].temperatureDownAvg=="——"){
+                            continue;
+                        }
+                        msg = "下机开机前设定";
+                    }else if(type=="down" && tep=="act"){
+                        if(temps[i].temperatureDownAct=="——"){
+                            continue;
+                        }
+                        msg = "下机开机后设定";
+                    }
+                    idStr.push(temps[i].teId)
+                }
+                /*
+                $.modal.open('修改' + msg + '温度',ctx + "product/temperature/editTemp?key=" + type + "&word=" + tep + "&idStr=" + idStr);
+                */
+
+                var options = {
+                    title: '修改' + msg + '温度',
+                    url: ctx + "product/temperature/editTemp?key=" + type + "&word=" + tep + "&idStr=" + idStr,
+                    callBack:function(index,layero){
+                        var body = layer.getChildFrame('body', index);
+                        body.find("#AdminSaveBtn").click();
+
+                        for(var i =0;i < temps.length ; i ++){
+                            var id = temps[i].teId;
+                            if(type=="up" && tep=="avg"){
+                                if(temps[i].temperatureUpAvg=="——"){
+                                    continue;
+                                }
+                                $("#upavg" + id ).text( body.find("#upavg"+ id ).val() )
+                            }else if(type=="up" && tep=="act"){
+                                if(temps[i].temperatureUpAct=="——"){
+                                    continue;
+                                }
+                                $("#upact" + id ).text( body.find("#upact" + id).val() )
+                            }else if(type=="down" && tep=="avg"){
+                                if(temps[i].temperatureDownAvg=="——"){
+                                    continue;
+                                }
+                                $("#downavg" + id ).text( body.find("#downavg"+id).val() )
+                            }else if(type=="down" && tep=="act"){
+                                if(temps[i].temperatureDownAct=="——"){
+                                    continue;
+                                }
+                                $("#downact" + id ).text( body.find("#downact"+id).val() )
+                            }
+                        }
+                      /*  $("#dataDiv").load( ctx + "product/temperature/template" ,{"productId":productId});*/
+
+                        layer.close(index);
+                        /*
+                        $.post(ctx + "product/temperature/template",{"productId":productId})
+                        $("#dataDiv").load(location.href+" #dataDiv");
+                        */
+
+
+                    }
+                };
+                $.modal.openOptions(options);
+            }
+        </script>
+   </span>
+</div>
+

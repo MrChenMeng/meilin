@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('新增温度面板')" />
+	<th:block th:include="include :: datetimepicker-css" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-temperature-add" th:object="${productLine}">
+		<input id="lineId" name="lineId"  type="hidden" th:field="*{lineId}" />
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">生产产线：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" readonly th:field="*{lineName}">
+			</div>
+		</div>
+
+
+
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">机位区域：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="place" id="place" required >
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-xs-2 control-label">机位类型：</label>
+			<div class="col-xs-9" id="machineType">
+				<label class="check-box"  th:each="dict: ${@dict.getType('product_temperature_machine')}" th:id = "'lab' + (${dict.dictValue})">
+					<input name="machineTypes" type="checkbox"  th:value="${dict.dictValue}" th:text="${dict.dictLabel}" required >
+				</label>
+			</div>
+		</div>
+
+		<div class="form-group" style="display: none">
+			<label class="col-sm-2 control-label" >上机标准：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="temperatureUpAvg" id="temperatureUpAvg" >
+			</div>
+		</div>
+
+		<div class="form-group" style="display: none">
+			<label class="col-sm-2 control-label">下机标准：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="temperatureDownAvg" id="temperatureDownAvg" >
+			</div>
+		</div>
+
+		<input hidden type="text" name="temperatureUpAct" id="temperatureUpAct" value="0">
+
+		<input hidden type="text" name="temperatureDownAct" id="temperatureDownAct" value="0">
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">排序：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="orderNum" required>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">状态：</label>
+			<div class="col-sm-9">
+				<div class="radio-box" th:each="dict : ${@dict.getType('sys_normal_disable')}">
+					<label th:for="${dict.dictCode}" th:text="${dict.dictLabel}"></label>
+					<input type="radio" th:id="${dict.dictCode}" name="status" th:value="${dict.dictValue}" th:checked="${dict.default}">
+				</div>
+			</div>
+		</div>
+
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control"></textarea>
+			</div>
+		</div>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var prefix = ctx + "product/temperature";
+
+
+	$("#form-temperature-add").validate({
+		onkeyup: false,
+		rules:{
+			orderNum:{
+				digits:true
+			},
+			temperatureUpAvg:{
+				digits:true,
+			},
+			temperatureDownAvg:{
+				digits:true
+			},
+			temperatureUpAct:{
+				digits:true
+			},
+			temperatureDownAct:{
+				digits:true
+			}
+		},
+		messages: {
+		},
+		focusCleanup: true
+	});
+
+	$(function(){
+		$('input').on('ifChecked', function(event){
+			var machineType = $(event.target).val();
+			/*
+			if (machineType == 1) {
+				$("#temperatureUpAvg").parents(".form-group").show();
+			} else if (machineType == 3) {
+				$("#temperatureDownAvg").parents(".form-group").show();
+			}
+			*/
+		});
+
+		$("#machineType ins").click(function () {
+			/*$("#temperatureUpAvg").parents(".form-group").toggle()*/
+
+			if($("#lab1 div").hasClass("checked")){
+				$("#temperatureUpAvg").val("0")
+				$("#temperatureUpAct").val("0")
+				$("#temperatureUpAvg").parents(".form-group").show();
+			}else{
+				$("#temperatureUpAvg").val("——")
+				$("#temperatureUpAct").val("——")
+				$("#temperatureUpAvg").parents(".form-group").hide();
+			}
+
+			if($("#lab3 div").hasClass("checked")){
+				$("#temperatureDownAvg").val("0")
+				$("#temperatureDownAct").val("0")
+				$("#temperatureDownAvg").parents(".form-group").show();
+			}else{
+				$("#temperatureDownAvg").val("——")
+				$("#temperatureDownAct").val("——")
+				$("#temperatureDownAvg").parents(".form-group").hide();
+			}
+		})
+	})
+
+	function submitHandler() {
+		if ($.validate.form()) {
+			var data = $('#form-temperature-add').serialize();
+			$.operate.save(prefix + "/add", data, function (result) {
+				parent.switchTemplate();
+			});
+		}
+	}
+</script>
+</body>
+</html>

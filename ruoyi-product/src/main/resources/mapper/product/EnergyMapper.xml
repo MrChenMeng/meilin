@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.EnergyMapper">
+
+    <resultMap type="Energy" id="EnergyResult">
+        <result property="eTime"        column="Etime"      />
+        <result property="eName"        column="EName"      />
+        <result property="zong"         column="ZONG"       />
+        <result property="feng"         column="FENG"       />
+        <result property="feng"         column="FENG"       />
+        <result property="time"         column="time"       />
+        <result property="lineId"       column="LineId"     />
+    </resultMap>
+
+    <sql id="selectEnergyVo">
+		select e.Etime,e.EName,e.ZONG
+        from ElectricDATA e
+        LEFT JOIN ElecTab t on e.EName = t.Exid
+    </sql>
+
+    <select id="energy"  parameterType="Energy" resultMap="EnergyResult">
+        SELECT
+        substring(Convert(VARCHAR(30), e.Etime, 120),1,13) [time],
+        sum(e.ZONG) [ZONG],
+        t.LineId
+        FROM
+        ElectricDATA e
+        LEFT JOIN ElecTab t ON e.EName = t.Exid
+        <where>
+            <if test="lineIds !=null and lineIds != ''">
+                and t.LineId in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            <if test="params.startTime != null and params.startTime != ''">
+                and datediff(dd,#{params.startTime},e.Etime)>= 0
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and datediff(dd,e.Etime,#{params.endTime})>= 0
+            </if>
+        </where>
+        group by substring(Convert(VARCHAR(30), e.Etime, 120),1,13),t.LineId
+        ORDER BY substring(Convert(VARCHAR(30), e.Etime, 120),1,13) desc,t.LineId
+    </select>
+
+    <select id="byDay"  parameterType="Energy" resultMap="EnergyResult">
+        SELECT
+        substring(Convert(VARCHAR(30), e.Etime, 120),1,10) [time],
+        sum(e.ZONG) [ZONG],
+        t.LineId
+        FROM
+        ElectricDATA e
+        LEFT JOIN ElecTab t ON e.EName = t.Exid
+        <where>
+            <if test="lineIds !=null and lineIds != ''">
+                and t.LineId in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            <if test="params.startTime != null and params.startTime != ''">
+                and datediff(dd,#{params.startTime},e.Etime)>= 0
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and datediff(dd,e.Etime,#{params.endTime})>= 0
+            </if>
+        </where>
+        group by substring(Convert(VARCHAR(30), e.Etime, 120),1,10),t.LineId
+        ORDER BY substring(Convert(VARCHAR(30), e.Etime, 120),1,10) desc,t.LineId
+    </select>
+
+    <select id="byMonth"  parameterType="Energy" resultMap="EnergyResult">
+        SELECT
+        Convert(VARCHAR(7), e.Etime, 120) [time],
+        sum(e.ZONG) [ZONG],
+        t.LineId
+        FROM
+        ElectricDATA e
+        LEFT JOIN ElecTab t ON e.EName = t.Exid
+        <where>
+            <if test="lineIds !=null and lineIds != ''">
+                and t.LineId in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            <if test="params.startTime != null and params.startTime != ''">
+                and datediff(dd,#{params.startTime},e.Etime)>= 0
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and datediff(dd,e.Etime,#{params.endTime})>= 0
+            </if>
+        </where>
+        group by Convert(VARCHAR(7), e.Etime, 120),t.LineId
+        ORDER BY Convert(VARCHAR(7), e.Etime, 120) desc,t.LineId
+    </select>
+
+    <select id="byYear"  parameterType="Energy" resultMap="EnergyResult">
+        SELECT
+        Convert(VARCHAR(4), e.Etime, 120) [time],
+        sum(e.ZONG) [ZONG],
+        t.LineId
+        FROM
+        ElectricDATA e
+        LEFT JOIN ElecTab t ON e.EName = t.Exid
+        <where>
+            <if test="lineIds !=null and lineIds != ''">
+                and t.LineId in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            <if test="params.startTime != null and params.startTime != ''">
+                and datediff(dd,#{params.startTime},e.Etime)>= 0
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and datediff(dd,e.Etime,#{params.endTime})>= 0
+            </if>
+        </where>
+        group by Convert(VARCHAR(4), e.Etime, 120),t.LineId
+        ORDER BY Convert(VARCHAR(4), e.Etime, 120) desc,t.LineId
+    </select>
+
+</mapper>

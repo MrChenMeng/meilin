@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('')" />
+	<th:block th:include="include :: print-css" />
+</head>
+<body class="gray-bg">
+	<button type="button" style="display: none" class="btn btn-success btn-rounded" id="print"><i class="fa fa-print"></i> 打印工单</button>
+	<div id="prevViewDiv">
+
+	</div>
+
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: print-js" />
+<script th:src="@{/ajax/libs/hiprint/custom_test/custom-etype-provider.js}"></script>
+<script th:src="@{/ajax/libs/hiprint/custom_test/custom-print-json.js}"></script>
+<script th:inline="javascript">
+	var printTemplate = [[${printTemplate}]]
+	var customPrintJson = JSON.parse(printTemplate.content);
+	var printDatas = [[${printDatas}]];
+	var templateArr = [];
+	var idStr = [[${idStr}]];
+	var prefix = ctx + "product/code";
+
+	$(document).ready(function () {
+		hiprint.init({
+			providers: [new customElementTypeProvider()]
+		});
+		hiprintTemplate = new hiprint.PrintTemplate({
+			template: customPrintJson,
+			settingContainer: '#PrintElementOptionSetting',
+			paginationContainer: '.hiprint-printPagination'
+		});
+		for(var i = 0;i < printDatas.length;i++){
+			templateArr.push({ template: hiprintTemplate, data:JSON.parse(printDatas[i])  });
+		}
+		/*  $('#prevViewDiv').html(hiprintTemplate.getHtml(printData));*/
+		$('#prevViewDiv').html(hiprint.getHtml({ templates: templateArr }));
+	})
+
+	$("#print").on("click",function(){
+		/*
+		hiprintTemplate.printByHtml($('#prevViewDiv'));
+		*/
+		CloseAfterPrint();
+	});
+
+
+	function CloseAfterPrint(){
+		if(tata=document.execCommand("print")){
+			window.close();
+			$.post(prefix + "/checkOver",{idStr:idStr},function(result){
+				if(result.code == 0){
+					parent.$.table.refresh();
+					parent.layer.closeAll();
+				}else{
+					$.modal.alertError(result.msg);
+				}
+			});
+		}
+		else{
+			setTimeout("CloseAfterPrint();",1000);
+		}
+	}
+
+</script>
+</body>
+</html>

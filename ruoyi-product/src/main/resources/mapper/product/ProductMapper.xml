@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.ProductMapper">
+
+    <resultMap type="Product" id="ProductResult">
+        <id     property="productId"        column="product_id" />
+        <result property="productNo"        column="product_no" />
+        <result property="orderNo"          column="order_no" />
+        <result property="productName"      column="product_name" />
+        <result property="productCode"      column="product_code" />
+        <result property="lineId"           column="line_id" />
+        <result property="productNum"       column="product_num" />
+        <result property="productAddNum"    column="product_add_num" />
+        <result property="productUnit"      column="product_unit" />
+        <result property="productSpecs"     column="product_specs" />
+        <result property="startTime"        column="start_time" />
+        <result property="endTime"          column="end_time" />
+        <result property="checkTime"        column="check_time" />
+        <result property="uuid"             column="uuid" />
+        <result property="status"           column="status" />
+        <result property="checkStatus"      column="check_status" />
+        <result property="createTime"       column="create_time" />
+        <result property="createBy"         column="create_by" />
+        <result property="remark"           column="remark"  />
+        <result property="checkId"          column="check_id"  />
+        <result property="mixDosage"        column="mix_dosage"  />
+        <result property="materialDosage"   column="material_dosage"  />
+        <result property="mixTemperature"   column="mix_temperature" />
+        <result property="datastate"        column="datastate" />
+        <result property="classNumber"      column="class_number" />
+        <result property="materialState"    column="material_state"  />
+        <result property="mixState"         column="mix_state"  />
+        <result property="mixCount"         column="mixCount"  />
+        <result property="materialCount"    column="materialCount"  />
+        <result property="examine"          column="examine"  />
+        <result property="sweepDate"        column="sweep_date"  />
+    </resultMap>
+
+    <sql id="selectProductVo">
+        select product_id, product_name,product_no, order_no,product_code,line_id,product_num,product_add_num,product_unit,product_specs,start_time,uuid, create_time,end_time,status,
+        create_by,check_status, remark,check_id,check_time,mix_temperature,mix_dosage,material_dosage,class_number,examine,datastate
+		from ml_product
+    </sql>
+
+    <select id="selectProductList" parameterType="Product" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        where  datastate = 1
+        <if test="lineIds !=null and lineIds != ''">
+            and line_id in
+            <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                #{lineId}
+            </foreach>
+        </if>
+        <if test="status != null and status != ''">
+            and status = #{status}
+        </if>
+        <if test="checkStatus != null and checkStatus != ''">
+            and check_status = #{checkStatus}
+        </if>
+        <if test="orderNo != null and orderNo != ''">
+            and order_no like concat('%',#{orderNo},'%')
+        </if>
+        <if test="productCode != null and productCode != ''">
+            and product_code like concat('%',#{productCode},'%')
+        </if>
+        <if test="productName != null and productName != ''">
+            and product_name like concat('%',#{productName},'%')
+        </if>
+        <if test="productNo != null and productNo != ''">
+            and product_no like concat('%',#{productNo},'%')
+        </if>
+        <if test="checkId != null">
+            and check_id = #{checkId}
+        </if>
+
+        <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+            AND date_format(start_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            AND date_format(start_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+
+        <if test="params.beginDate != null and params.beginDate != ''"><!-- 开始时间检索 -->
+            AND date_format(check_time,'%y%m%d') &gt;= date_format(#{params.beginDate},'%y%m%d')
+        </if>
+        <if test="params.endDate != null and params.endDate != ''"><!-- 结束时间检索 -->
+            AND date_format(check_time,'%y%m%d') &lt;= date_format(#{params.endDate},'%y%m%d')
+        </if>
+    </select>
+
+    <select id="selectProductByUuid" parameterType="String" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        where uuid = #{uuid} and datastate = 1
+    </select>
+
+    <select id="selectProductById" parameterType="Long" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        where product_id = #{productId} and datastate = 1
+    </select>
+
+    <select id="selectProductByProductNo" parameterType="String" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        where datastate = 1 and product_no = #{productNo}
+    </select>
+
+    <select id="capacity" parameterType="Product" resultMap="ProductResult">
+        SELECT p.product_no, p.product_name, p.line_id,
+        CASE WHEN date_format(p.create_time, '%y%m%d') >= date_format(#{params.startTime}, '%y%m%d')
+              AND date_format(p.create_time, '%y%m%d') &lt;= date_format(#{params.endTime}, '%y%m%d') THEN P.product_num ELSE 0 END
+        AS product_num,
+        c.product_add_num, p.start_time,p.create_time, c.sweep_date
+        FROM
+        ml_product p
+        LEFT JOIN (
+            SELECT sum(cheng_zhong) AS product_add_num, product_no, sweep_date,line_id
+            FROM
+            ml_qr_code
+            WHERE
+            data_state = 1  AND valid = 2
+            <if test="lineIds !=null and lineIds != ''">
+                and line_id in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            AND date_format(sweep_date,'%y%m%d') &gt;= date_format(#{params.startTime},'%y%m%d')
+            AND date_format(sweep_date,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            GROUP BY line_id, product_no, sweep_date
+        ) AS c ON c.line_id = p.line_id AND c.product_no = p.product_no
+        WHERE
+        p.datastate = 1
+        AND (
+        date_format(c.sweep_date, '%y%m%d') &gt;= date_format(#{params.startTime},'%y%m%d')
+        AND date_format(c.sweep_date, '%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        )
+        OR (
+        date_format(p.create_time, '%y%m%d') &gt;= date_format(#{params.startTime},'%y%m%d')
+        AND date_format(p.create_time, '%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        )
+        <if test="productName != null and productName != ''">
+            and p.product_name like concat('%',#{productName},'%')
+        </if>
+        <if test="lineIds !=null and lineIds != ''">
+            and p.line_id in
+            <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                #{lineId}
+            </foreach>
+        </if>
+        ORDER BY p.line_id ASC
+    </select>
+
+    <select id="speed" parameterType="Product" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        where  datastate = 1
+        <if test="lineIds !=null and lineIds != ''">
+            and line_id in
+            <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                #{lineId}
+            </foreach>
+        </if>
+        <if test="orderNo != null and orderNo != ''">
+            and order_no like concat('%',#{orderNo},'%')
+        </if>
+        <if test="productName != null and productName != ''">
+            and product_name like concat('%',#{productName},'%')
+        </if>
+        <if test="productNo != null and productNo != ''">
+            and product_no like concat('%',#{productNo},'%')
+        </if>
+        <if test="params.startTime != null and params.startTime != ''"><!-- 开始时间检索 -->
+            AND date_format(create_time,'%y%m%d') &gt;= date_format(#{params.startTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            AND date_format(create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+    </select>
+
+
+    <select id="getMaxProductNo" parameterType="Product" resultType="String">
+       select max(RIGHT(product_no,4)) from ml_product
+       where  date_format(create_time,'%y%m%d') = date_format(#{createTime},'%y%m%d')
+    </select>
+
+    <insert id="insertProduct" parameterType="Product" keyProperty="productId">
+        insert into ml_product(
+        <if test="productNo != null and productNo != ''">product_no,</if>
+        <if test="orderNo != null and orderNo != ''">order_no,</if>
+        <if test="productName != null and productName != ''">product_name,</if>
+        <if test="productCode != null and productCode != ''">product_code,</if>
+        <if test="lineId != null and lineId != ''">line_id,</if>
+        <if test="productNum != null and productNum != ''">product_num,</if>
+        <if test="productUnit != null and productUnit != ''">product_unit,</if>
+        <if test="productSpecs != null and productSpecs != ''">product_specs,</if>
+        <if test="startTime != null and startTime != ''">start_time,</if>
+        <if test="endTime != null and endTime != ''">end_time,</if>
+        <if test="uuid != null and uuid != ''">uuid,</if>
+        <if test="status != null and status != ''">status,</if>
+        <if test="checkStatus != null and checkStatus != ''">check_status,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
+        <if test="remark != null and remark != ''">remark,</if>
+        <if test="checkId != null">check_id,</if>
+        <if test="mixDosage != null">mix_dosage,</if>
+        <if test="materialDosage != null">material_dosage,</if>
+        <if test="examine != null and examine != ''">examine,</if>
+        <if test="classNumber != null and  classNumber!=''">class_number,</if>
+        mix_temperature,
+        create_time,
+        datastate
+        )values(
+        <if test="productNo != null and productNo != ''">#{productNo},</if>
+        <if test="orderNo != null and orderNo != ''">#{orderNo},</if>
+        <if test="productName != null and productName != ''">#{productName},</if>
+        <if test="productCode != null and productCode != ''">#{productCode},</if>
+        <if test="lineId != null and lineId != ''">#{lineId},</if>
+        <if test="productNum != null and productNum != ''">#{productNum},</if>
+        <if test="productUnit != null and productUnit != ''">#{productUnit},</if>
+        <if test="productSpecs != null and productSpecs != ''">#{productSpecs},</if>
+        <if test="startTime != null and startTime != ''">#{startTime},</if>
+        <if test="endTime != null and endTime != ''">#{endTime},</if>
+        <if test="uuid != null and uuid != ''">#{uuid},</if>
+        <if test="status != null and status != ''">#{status},</if>
+        <if test="checkStatus != null and checkStatus != ''">#{checkStatus},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
+        <if test="remark != null and remark != ''">#{remark},</if>
+        <if test="checkId != null">#{checkId},</if>
+        <if test="mixDosage != null">#{mixDosage},</if>
+        <if test="materialDosage != null">#{materialDosage},</if>
+        <if test="examine != null and examine != ''">#{examine},</if>
+        <if test="classNumber != null and classNumber!=''">#{classNumber},</if>
+        120,
+        sysdate()
+        ,1
+        )
+    </insert>
+
+    <update id="updateProduct" parameterType="Product">
+        update ml_product
+        <set>
+            <if test="productNo != null and productNo != ''">product_no = #{productNo},</if>
+            <if test="orderNo != null and orderNo != ''">order_no = #{orderNo},</if>
+            <if test="productName != null and productName != ''">product_name = #{productName},</if>
+            <if test="productCode != null and productCode != ''">product_code = #{productCode},</if>
+            <if test="lineId != null and lineId != ''">line_id = #{lineId},</if>
+            <if test="productNum != null and productNum != ''">product_num = #{productNum},</if>
+            <if test="productAddNum != null and productAddNum != ''">product_add_num = #{productAddNum},</if>
+            <if test="productUnit != null and productUnit != ''">product_unit = #{productUnit},</if>
+            <if test="productSpecs != null and productSpecs != ''">product_specs = #{productSpecs},</if>
+            <if test="uuid != null and uuid != ''">uuid = #{uuid},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="checkStatus != null and checkStatus != ''">check_status = #{checkStatus},</if>
+            <if test="remark != null and remark != ''">remark = #{remark},</if>
+            <if test="startTime != null and startTime != ''">start_time = #{startTime},</if>
+            <if test="endTime != null and endTime != ''">end_time = #{endTime},</if>
+            <if test="checkId != null">check_id = #{checkId},</if>
+            <if test="mixDosage != null">mix_dosage = #{mixDosage},</if>
+            <if test="materialDosage != null">material_dosage = #{materialDosage},</if>
+            <if test="mixTemperature != null and mixTemperature != ''">mix_temperature = #{mixTemperature},</if>
+            <if test="classNumber != null and classNumber != ''">class_number = #{classNumber},</if>
+            <if test="checkTime != null and checkTime != ''">check_time = #{checkTime},</if>
+            update_time = sysdate()
+        </set>
+        where product_id = #{productId}
+    </update>
+
+    <update id="removeCheckId" parameterType="Long">
+        update ml_product set check_id = null where product_id = #{productId}
+    </update>
+
+    <delete id="deleteProductByIds" parameterType="Long">
+        update ml_product set  datastate =2 where product_id in
+        <foreach collection="array" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+    </delete>
+
+    <update id="editState">
+        update ml_product set status = #{state}
+        where product_id = #{id}
+    </update>
+
+    <select id="selectTemperature" parameterType="Long" resultType="String">
+        select mix_temperature from ml_product where product_id = #{productId}
+    </select>
+
+    <select id="count" parameterType="Product" resultType="Integer">
+        select count(product_id) from ml_product where datastate = 1
+        <if test="lineIds !=null and lineIds != ''">
+            and line_id in
+            <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                #{lineId}
+            </foreach>
+        </if>
+        <if test="productId != null and productId != ''">
+            and product_id = #{productId}
+        </if>
+        <if test="status != null and status != ''">
+            and status = #{status}
+        </if>
+        <if test="checkStatus != null and checkStatus != ''">
+            and check_status = #{checkStatus}
+        </if>
+        <if test="orderNo != null and orderNo != ''">
+            and order_no like concat('%',#{orderNo},'%')
+        </if>
+        <if test="productCode != null and productCode != ''">
+            and product_code like concat('%',#{productCode},'%')
+        </if>
+        <if test="productName != null and productName != ''">
+            and product_name like concat('%',#{productName},'%')
+        </if>
+        <if test="productNo != null and productNo != ''">
+            and product_no like concat('%',#{productNo},'%')
+        </if>
+        <if test="checkId != null">
+            and check_id = #{checkId}
+        </if>
+    </select>
+
+    <select id="productList" parameterType="Product" resultMap="ProductResult" resultType="Product">
+        select p.product_id, p.product_name,p.product_no, p.order_no,p.product_code, p.line_id,p.product_num,p.product_add_num, p.product_unit,p.product_specs,p.start_time,p.uuid, p.create_time,p.end_time,p.status,
+        p.create_by,p.check_status, p.remark,p.check_id,p.mix_temperature,p.mix_dosage,p.class_number,p.material_dosage,
+        d.dict_label as weightUnit,
+        m1.count as materialCount,
+        m2.count as mixCount
+        FROM
+        ml_product p
+        LEFT JOIN sys_dict_data d ON p.product_unit = d.dict_value
+        LEFT JOIN material_count m1 ON m1.product_id = p.product_id and m1.type = 1
+        left join material_count m2 on m2.product_id = p.product_id and m2.type = 2
+        where p.datastate = 1 and d.dict_type = "sys_product_unit"
+        <if test="lineIds !=null and lineIds != ''">
+            and p.line_id in
+            <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                #{lineId}
+            </foreach>
+        </if>
+        <if test="lineId != null and lineId != ''">
+            and p.line_id = #{lineId}
+        </if>
+        <if test="productId != null and productId != ''">
+            and p.product_id = #{productId}
+        </if>
+        <if test="status != null and status != ''">
+            and p.status = #{status}
+        </if>
+        <if test="checkStatus != null and checkStatus != ''">
+            and p.check_status = #{checkStatus}
+        </if>
+        <if test="orderNo != null and orderNo != ''">
+            and p.order_no like concat('%',#{orderNo},'%')
+        </if>
+        <if test="productCode != null and productCode != ''">
+            and p.product_code like concat('%',#{productCode},'%')
+        </if>
+        <if test="productName != null and productName != ''">
+            and p.product_name like concat('%',#{productName},'%')
+        </if>
+        <if test="productNo != null and productNo != ''">
+            and p.product_no like concat('%',#{productNo},'%')
+        </if>
+        <if test="checkId != null">
+            and p.check_id = #{checkId}
+        </if>
+        limit #{start},#{end}
+    </select>
+
+    <update id="examine" parameterType="Long">
+        update ml_product set examine = 1 where product_id = #{productId}
+    </update>
+
+</mapper>

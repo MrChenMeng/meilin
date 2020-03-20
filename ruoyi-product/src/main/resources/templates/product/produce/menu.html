@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('产品列表')"/>
+    <th:block th:include="include :: bootstrap-select-css"/>
+</head>
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeIn">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="produce-form">
+                <div class="select-list">
+                    <ul>
+                        <li class="select-selectpicker">
+                            生产产线：
+                            <select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择" multiple>
+                                <option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+                            </select>
+                        </li>
+                        <li>
+                            生产状态：
+                            <select name="status" id="status" th:with="type=${@dict.getType('product_produce_status')}">
+                                <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
+                                        th:value="${dict.dictValue}"></option>
+                            </select>
+                        </li>
+                        <li>
+                            产品单号：&nbsp;<input type="text" name="productNo" id="productNo">
+                        </li>
+                        <li>
+                            订&nbsp;&nbsp;单&nbsp;号：&nbsp;<input type="text" name="orderNo" id="orderNo">
+                        </li>
+                        <li>
+                            产品编码：&nbsp;<input type="text" name="productCode" id="productCode">
+                        </li>
+                        <li>
+                            产品名称：&nbsp;<input type="text" name="productName" id="productName">
+                        </li>
+                        <li class="select-time">
+                            <label>生产时间： </label>
+                            &nbsp;&nbsp;<input type="text" class="time-input" id="startTime" placeholder="开始时间"
+                                   name="params[beginTime]"/>
+                            <span>-</span>
+                            <input type="text" class="time-input" id="endTime" placeholder="结束时间"
+                                   name="params[endTime]"/>
+                        </li>
+                        <li>
+                            <button type="button" class="btn btn-sm btn-info" onclick="search()"><i
+                                    class="fa fa-search"></i>&nbsp;搜索
+                            </button>
+                            <a class="btn btn-warning btn-info btn-sm" onclick="location.reload();"><i
+                                    class="fa fa-refresh"></i>&nbsp;重置</a>
+                        </li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+
+        <div class="btn-group-sm" id="toolbar" role="group">
+            <a class="btn btn-success" onclick="addProduct()" shiro:hasPermission="product:produce:add">
+                <i class="fa fa-plus"></i> 新增
+            </a>
+            <a class="btn btn-primary single disabled" id="editProduct" onclick=" editProduct()"
+               shiro:hasPermission="product:produce:edit">
+                <i class="fa fa-edit"></i> 修改
+            </a>
+            <a class="btn btn-danger multiple disabled" style="margin-right:50px" id="removeProduct" onclick="remove()"
+               shiro:hasPermission="product:produce:remove">
+                <i class="fa fa-remove"></i> 删除
+            </a>
+            <a class="btn btn-info single disabled" id="copyProduct" onclick="copyProduct()"
+               shiro:hasPermission="product:produce:copyProduct">
+                <i class="fa fa-copy"></i> 复制
+            </a>
+            <a class="btn btn-warning single disabled" id="examine" onclick="examine()"
+               shiro:hasPermission="product:produce:examine">
+                <i class="fa fa-crop"></i> 审核
+            </a>
+            <a class="btn btn-success  single disabled" id="over" shiro:hasPermission="product:produce:over">
+                <i class="fa fa-check-square"></i> 完工
+            </a>
+            <a class="btn btn-primary single disabled" style="margin-right:50px" id="history"
+               shiro:hasPermission="product:history:view">
+                <i class="glyphicon glyphicon-calendar "></i> 历史
+            </a>
+
+            </a>
+            <a class="btn btn-info" onclick="importExcel()" shiro:hasPermission="product:plan:import">
+                <i class="fa fa-upload"></i> 导入
+            </a>
+            <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="product:plan:export">
+                <i class="fa fa-download"></i> 导出
+            </a>
+            <a class="btn btn-info single disabled" id="printWork" onclick="printWork()" shiro:hasPermission="product:produce:printWork">
+                <i class="fa fa-print"></i> 打印工单
+            </a>
+            <a class="btn btn-danger single disabled" id="printCode" onclick="printCode()" shiro:hasPermission="product:produce:printCode">
+                <i class="fa fa-print"></i> 打印条码
+            </a>
+        </div>
+
+        <div class="col-sm-12 select-table table-striped">
+            <table id="bootstrap-table" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+
+
+    <div class="row" shiro:hasPermission="product:produce:showContent">
+        <div class="col-sm-12 search-collapse">
+            <ul class="nav nav-tabs">
+                <li class="active">
+                    <a data-toggle="tab" href="#tab-1" aria-expanded="true">温度</a>
+                </li>
+                <th:block th:each="pList,dictIndex : ${procedureMap}">
+                    <li class="" th:each="procedure : ${pList}"
+                        th:onclick="formulaType(this,[[${procedure.key}]],[[${@dict.getLabel('product_material_type',{procedure.key})}]],[[${dictIndex.index+2}]])">
+                        <a data-toggle="tab" th:href="@{'#tab-'+${dictIndex.index+2}}" aria-expanded="false">[[${@dict.getLabel('product_material_type',{procedure.key})}]]</a>
+                    </li>
+                </th:block>
+            </ul>
+            <div class="tab-content">
+                <div id="tab-1" class="tab-pane active">
+                    <div class="panel blank-panel">
+                        <div class="panel-heading" style="height: 70px;">
+                            <h1 style="text-align:left;font-size: 20px"><span>拌和温度：</span><span id="temperature" style="font-size: 22px"></span>
+                            </h1>
+                        </div>
+                        <div class="table-striped" id="dataDiv">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                <tr>
+                                    <th>生产产线</th>
+                                    <th>机位</th>
+                                    <th>温度设定</th>
+                                    <th> 区域温度</th>
+                                    <th> 操作</th>
+                                </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <th:block th:each="pList,dictIndex : ${procedureMap}">
+                    <div th:id="tab- + (${dictIndex.index+2})" class="tab-pane">
+                        <div class="panel-body">
+                            <div class="select-list" role="group">
+                                <li class="select-selectpicker">
+                                    <th:block th:each="procedure : ${pList}">
+                                        [[${@dict.getLabel('product_material_type',{procedure.key})}]]配方：
+                                    </th:block>
+                                    <select th:each="procedure : ${pList}" th:id="material+(${procedure.key})"
+                                            onclick="">
+                                        <!--	<option value="0">请选择</option>-->
+                                        <th:block th:each="p:${procedureMap[procedure.key]}">
+                                            <option th:value="${p.id}">[[${p.name}]]</option>
+                                        </th:block>
+                                    </select>
+                                </li>
+                                <li shiro:hasPermission="product:productMaterial:add">
+                                    <a class="btn btn-success" onclick="insertRow()">
+                                        <i class="fa fa-plus"></i> 新增
+                                    </a>
+                                </li>
+                                <li shiro:hasPermission="product:material:insertMaterialList">
+                                    <a class="btn btn-primary" id="editMater" onclick="materialSave()">
+                                        <i class="fa fa-edit"></i> 保存
+                                    </a>
+                                </li>
+                            </div>
+                            <div class="table-striped">
+                                <th:block th:each="procedure : ${pList}">
+                                    <table th:id="materTable + (${procedure.key})"
+                                           data-mobile-responsive="true"
+                                           data-use-row-attr-func="true"
+                                           data-reorderable-rows="true">
+                                    </table>
+                                </th:block>
+                            </div>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:include="include :: footer"/>
+<th:block th:include="include :: bootstrap-select-js"/>
+<th:block th:include="include :: bootstrap-table-reorder-js" />
+<script th:inline="javascript">
+    var editFlag = [[${@permission.hasPermi('product:produce:edit')}]];
+    var removeFlag = [[${@permission.hasPermi('product:produce:remove')}]];
+    var removeMaterial = [[${@permission.hasPermi('product:productMaterial:remove')}]];
+    var updateMaterial = [[${@permission.hasPermi('product:productMaterial:edit')}]];
+    var majorMaterial = [[${@permission.hasPermi('product:productMaterial:major')}]];
+    var datas = [[${@dict.getType('sys_product_unit')}]];
+    var statudatas = [[${@dict.getType('product_produce_status')}]];
+    var examines = [[${@dict.getType('product_examine_type')}]];
+    var dataSpce = [[${@dict.getType('product_produce_specs')}]];
+    var materialTotal = 0;                      //产品是否含有物料集合
+    var materialList = [];                      //查询的物料配方集合
+    var productLines = [[${productLines}]];     //产线集合
+    var prefix = ctx + "product/produce";       //url路径
+    var procedureId = 0;                        //下拉物料配方id
+    var materialType = 0;                       //物料类型
+    var materialIndex = 0;                      //选项卡下标
+    var materialName = "";                      //  物料名称
+    var productId = 0; 				            //产品id
+    var productNo = "";                         //产品单号
+    var lineId = 0;					            //产线id
+    var index = 0;                              //新增一行表格使用
+    var update = 0;                             //决定修改的物料配方app要不药刷新页面
+    var status = 0;
+    var roll = 0;
+
+    /*搜索按钮*/
+    function search() {
+        var data = {};
+        data.lineIds = $.common.join($('#lineIds').selectpicker('val'));
+        $.table.destroy("material" + materialType);
+        refresh();
+        $.table.search("produce-form", data);
+        productId = 0;
+        materialTotal = 0;
+        clickmater(materialType, procedureId, materialName, materialIndex);
+    }
+
+    /*新增按钮*/
+    function addProduct() {
+        $.modal.open('新增计划单', prefix + '/add');
+    }
+
+    /*删除按钮*/
+    function remove(){
+        $.modal.confirm("确认要删除选中的1条数据吗?", function() {
+            $.post(prefix + "/remove", { "ids": productId },function(result){
+                if(result.code ==0){
+                    freshTab();
+                }
+            });
+        });
+    }
+
+    /*修改按钮*/
+    function editProduct() {
+        if (status == 2) {
+            $.modal.msgWarning("计划单已经完工");
+        } else {
+            $.modal.open('修改计划单', prefix + "/edit/" + productId);
+        }
+    }
+
+    function copyProduct(){
+        $.post(prefix + "/copyProduct/"+ productId,function(result){
+            if(result.code == 500){
+                $.modal.msgWarning(result.msg);
+            }else{
+                freshTab();
+                $.operate.get(ctx + "product/weChatEnter/push/" + result.data,function(obj){
+                });
+            }
+        })
+    }
+
+    function examine(){
+        $.post(prefix + "/examine/"+ productId,function(result){
+            if(result.code==0){
+                freshTab();
+            }
+        })
+    }
+
+    /*完工按钮*/
+    $("#over").click(function () {
+        url = prefix + "/editCheckState";
+        $.operate.submit(url, "post", "json", {id: productId}, function (result) {
+            if (result.code == 0) {
+                $.modal.msgSuccess("完工！");
+                freshTab();
+            } else {
+                $.modal.msgError(result.msg);
+            }
+        });
+    });
+
+    /*历史记录按钮*/
+    $("#history").click(function () {
+        $.modal.open('历史记录', ctx + 'product/history/list/' + productId, 1200);
+    });
+
+    /*导入按钮*/
+    function importExcel() {
+        layer.open({
+            type: 2,
+            maxmin: true,
+            title: "产品数据导入",
+            area: ['65%', '85%'],
+            content: ctx + "common/ExcelImport?model=plan&url=product/plan&act=ExcelImport",//iframe的url，no代表不显示滚动条
+            btn: ['关闭'], //可以无限个按钮
+        });
+    }
+
+    /*打印工单按钮*/
+    function printWork() {
+        $.modal.openTab("打印工单", prefix + '/printWork/' + productId);
+    }
+
+    /*打印条码按钮*/
+    function printCode() {
+        $.modal.openTab("打印条码", prefix + '/printCode/' + productNo);
+    }
+
+    /*初始加载表格*/
+    $(function () {
+        clickProduct();
+        refresh();
+    });
+
+    /*刷新页面*/
+    function refresh() {
+        var html = "<table class=\"table table-bordered table-striped\">";
+        html += " <thead>";
+        html += "<tr>";
+        html += "<th>生产产线</th>";
+        html += "<th>机位</th>";
+        html += "<th>温度设定</th>";
+        html += "<th> 区域温度 </th>";
+        html += "<th> 操作 </th>";
+        html += "</tr>";
+        html += "</thead>";
+        html += "</table>";
+        $('#dataDiv').html(html);
+        $("#temperature").text('');
+        clickProduct();
+        productId = 0;
+    }
+
+    /*刷新产品表格*/
+    function freshTab() {
+        $.table.destroy("bootstrap-table");
+        clickProduct();
+    }
+
+    /*产品表格*/
+    function clickProduct() {
+        //主表
+        var options = {
+            url: prefix + "/list",
+            sortName: "productId",
+            sortOrder: "desc",
+            modalName: "产品",
+            uniqueId: "productId",
+            id: "bootstrap-table",
+            toolbar: "toolbar",
+            exportUrl: ctx + "product/plan/export",
+            showExport: true,
+            clickToSelect: true,
+            pageSize: 6,
+            pageList: [6, 10, 20, 50, 100],
+            rowStyle: rowStyle,
+            columns: [{
+                radio: true
+            },
+                {
+                    field: 'lineId',
+                    title: '生产产线',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        for (var i = 0; i < productLines.length; i++) {
+                            if (productLines[i].lineId == value) {
+                                actions.push(productLines[i].lineName)
+                            }
+                        }
+                        return actions.join('');
+                    }
+                },
+                {
+                    field: 'orderNo',
+                    title: '销售订单号'
+                },
+                {
+                    field: 'productName',
+                    title: '产品名称'
+                },
+                {
+                    field: 'productNo',
+                    title: '生产单号'
+                },
+                {
+                    field: 'mixDosage',
+                    title: '拌和缸数',
+                    formatter: function (value, row, index) {
+                        if (value == null) {
+                            value = 0;
+                        }
+                        return value + "缸";
+                    }
+                },
+                {
+                    field: 'mixCount',
+                    title: '已报拌和缸数',
+                    formatter: function (value, row, index) {
+                        if (value == null) {
+                            value = 0;
+                        }
+                        return value + "缸";
+                    }
+                },
+                {
+                    field: 'materialDosage',
+                    title: '助剂缸数',
+                    formatter: function (value, row, index) {
+                        if (value == null) {
+                            value = 0;
+                        }
+                        return value + "缸";
+                    }
+                },
+                {
+                    field: 'materialCount',
+                    title: '已报助剂缸数',
+                    formatter: function (value, row, index) {
+                        if (value == null) {
+                            value = 0;
+                        }
+                        return value + "缸";
+                    }
+                },
+                {
+                    field: 'productNum',
+                    title: '生产数量'
+                },
+                {
+                    field: 'productAddNum',
+                    title: '已投数量'
+                },
+                {
+                    field: 'completeScheduleView',
+                    title: '完成进度',
+                    formatter: function (value, row, index) {
+                        var speed = (Math.round(row.productAddNum/row.productNum * 10000) / 100.00 + "%")
+                        var process = '<div class="progress" style="margin-bottom: 0px;"><div class="progress-bar bg-success" style="width: '+speed+'"><font color="#000000">'+speed+'</font></div></div>'
+                        return process;
+                    }
+                },
+                {
+                    field: 'productUnit',
+                    title: '计量单位',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(datas, value);
+                    }
+                },
+                {
+                    field: 'productSpecs',
+                    title: '包装规格',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(dataSpce, value);
+                    }
+                },
+                {
+                    field: 'startTime',
+                    title: '生产时间',
+                    sortable: true
+                },
+                {
+                    field: 'endTime',
+                    title: '交货时间',
+                    sortable: true
+                }, {
+                    field: 'status',
+                    title: '生产状态',
+                    align: 'center',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(statudatas, value);
+                    }
+                }, {
+                    field: 'examine',
+                    title: '审核状态',
+                    align: 'center',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(examines, value);
+                    }
+                },{
+                    field: 'remark',
+                    title: '备注'
+                }
+            ],
+            onClickRow: function (row, e) {
+                lineId = row.lineId;
+                productId = row.productId;
+                productNo = row.productNo;
+                status = row.status;
+                $.post(ctx + "product/material/list",{productId:productId,type:materialType},function(result){
+                    if(result.total == 0){
+                        materialTotal = 0;
+                        $("#material" + materialType).val(procedureId);
+                        $("#material" + materialType).removeAttr("disabled");
+                    }else{
+                        materialTotal = result.total;
+                        procedureId = result.rows[0].procedureId;
+                        $("#material" + materialType).val(result.rows[0].procedureId);
+                        $("#material" + materialType).attr("disabled", "disabled");
+                    }
+                    clickmater(materialType, procedureId, materialName, materialIndex);
+                })
+                $("#dataDiv").load(ctx + "product/temperature/template", {"productId": productId});
+                $("#temperature").load(ctx + "product/produce/selectTemperature", {productId: productId});
+                $("#editProduct").removeClass("disabled");
+                $("#removeProduct").removeClass("disabled");
+                $("#over").removeClass("disabled");
+                $("#history").removeClass("disabled");
+                $("#printWork").removeClass("disabled");
+                $("#printCode").removeClass("disabled");
+            }
+        };
+        $.table.init(options);
+
+    }
+
+    /*根据产量和总量改变背景颜色*/
+    function rowStyle(row, index) {
+        var style = {css: {'color': ''}};
+        if (row.productAddNum != null && row.productAddNum == row.productNum) {
+            style = {css: {'color': '#7AE5A2'}}
+        }
+        if (row.productAddNum != null && parseFloat(row.productAddNum) > parseFloat(row.productNum)) {
+            style = {css: {'color': '#FF0000'}}
+        }
+        return style;
+    }
+
+    /*切换选项卡*/
+    function formulaType(obj, type, name, index) {
+        materialType = type;
+        materialName = name;
+        materialIndex = index;
+        procedureId = $("#material" + type).val();
+
+        $.post(ctx + "product/material/list",{productId:productId,type:materialType},function(result){
+            if(result.total == 0){
+                materialTotal = 0;
+                $("#material" + materialType).val(procedureId);
+                $("#material" + materialType).removeAttr("disabled");
+            }else{
+                materialTotal = result.total;
+                procedureId = result.rows[0].procedureId;
+                $("#material" + materialType).val(result.rows[0].procedureId);
+                $("#material" + materialType).attr("disabled", "disabled");
+            }
+            clickmater(materialType, procedureId, materialName, materialIndex);
+        })
+
+        /*选择助剂配料事件*/
+        $("#material" + materialType).change(function () {
+            procedureId = $("#material" + type).val();
+            clickmater(type, procedureId, name, materialIndex);
+        });
+
+    }
+
+
+    /*配料表格*/
+    function clickmater(type, procedureId, name, materialIndex) {
+        materArr = [];
+        update = 0;
+        $.table.destroy("materTable" + type);
+        var materOptions = {
+            url: ctx + "product/material/materials",
+            queryParams: function (params) {
+                if(materialTotal == 0){
+                    return {
+                        procedureId: procedureId,
+                        type:materialType
+                    };
+                }else{
+                    return {
+                        productId: productId,
+                        procedureId: procedureId,
+                        type:materialType
+                    };
+                }
+            },
+            modalName: name,
+            id: "materTable" + type,
+            uniqueId: "mid",
+            showFooter: true,
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            toolbar: 'bar' + type,
+            columns: [
+                {
+                    field: 'name',
+                    title: '物料名称',
+                    formatter: function (value, row, index) {
+                        if(updateMaterial == "hidden"){
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                remark =  row.remark;
+                                if (remark == null ||  remark == "null") {
+                                    remark = "";
+                                }
+                                value = remark
+                            }
+                            return value
+                        }else{
+                            var actions = [];
+                            obj = row.name;
+                            var id = "td_"+row.mid + type;
+                            var idval = row.mid;
+                            var uuid = row.uuid;
+                            var major = row.major;
+                            var updateTime = row.updateTime;
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                remark =  row.remark;
+                                if (remark == null ||  remark == "null") {
+                                    if(type == 1){
+                                        remark = "";
+                                    }else{
+                                        remark = "拌和温度___℃";
+                                    }
+
+                                }
+                                actions.push('备注：<textarea id="remark' + type + '" style="width:100%;height: 100px;color:red;font-size:20px">' + remark + '</textarea>');
+                            } else {
+                                if(updateTime == null || updateTime == "null"){
+                                    updateTime = "";
+                                }
+                                if(row.major == 1){
+                                    actions.push('<input style="color:red" name="materialName' + type + '" id="'+id+'" onBlur=editMaterial('+'"'+obj+'"'+',1,'+'"name"'+','+idval+')  value="' + value + '">'
+                                        + '<input name="major' + type + '" id="major' + row.mid + type + '" value="' + major + '" type="hidden">'
+                                        + '<input name="materialId' + type + '" value="' + idval + '" type="hidden">'
+                                        + '<input name="uuid' + type + '" value="' + uuid + '" type="hidden">'
+                                        + '<input name="updateTime' + type + '" value="' + updateTime + '" type="hidden">');
+                                }else{
+                                    actions.push('<input name="materialName' + type + '" id="'+id+'" onBlur=editMaterial('+'"'+obj+'"'+',1,'+'"name"'+','+idval+')  value="' + value + '">'
+                                        + '<input name="major' + type + '" id="major' + row.mid + type + '" value="' + major + '" type="hidden">'
+                                        + '<input name="materialId' + type + '" value="' + idval + '" type="hidden">'
+                                        + '<input name="uuid' + type + '" value="' + uuid + '" type="hidden">'
+                                        + '<input name="updateTime' + type + '" value="' + updateTime + '" type="hidden">');
+                                }
+                            }
+                            return actions.join('');
+                        }
+                    },
+                },
+                {
+                    field: 'dosage',
+                    title: '物料数量',
+                    formatter: function (value, row, index) {
+                        if(updateMaterial == "hidden"){
+                            return value
+                        }else{
+                            var actions = [];
+                            obj = row.dosage;
+                            var id = "td_"+row.mid + 2;
+                            var idval = row.mid;
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                actions.push('');
+                            }else{
+                                actions.push('<input id="'+id+'" onBlur = editMaterial('+'"'+obj+'"'+',2,'+'"dosage"'+','+idval+') onkeyup="this.value= this.value.match(/\\d+(\\.\\d{0,2})?/) ? this.value.match(/\\d+(\\.\\d{0,2})?/)[0] : \'\'" name="materialDosage' + type + '" value="' + value + '">');
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    footerFormatter:function (value) {
+                        var sumBalance = 0;
+                        for (var i = 0;i<value.length - 1;i++) {
+                            var balance = parseFloat(value[i].dosage);
+                            if(value[i].unit==2){
+                                balance = parseFloat(balance/1000);
+                            }
+                            sumBalance += balance;
+                        }
+                        return "总用量：" + sumBalance.toFixed(3)+"kg";
+                    }
+                },
+                {
+                    field: 'drift',
+                    title: '误差',
+                    formatter: function (value, row, index) {
+                        if(updateMaterial == "hidden"){
+                            return value
+                        }else{
+                            var actions = [];
+                            obj = row.drift;
+                            var id = "td_"+row.mid + 3;
+                            var idval = row.mid;
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                actions.push('');
+                            }else{
+                                actions.push('<input id="'+id+'" onBlur = editMaterial('+'"'+obj+'"'+',3,'+'"drift"'+','+idval+') onkeyup="this.value= this.value.match(/\\d+(\\.\\d{0,2})?/) ? this.value.match(/\\d+(\\.\\d{0,2})?/)[0] : \'\'" name="drift' + type + '" value="' + value + '">');
+                            }
+                            return actions.join('');
+                        }
+                    }
+                },
+                {
+                    field: 'unit',
+                    title: '计量单位',
+                    formatter: function (value, row, index) {
+                        if(updateMaterial == "hidden"){
+                            return $.table.selectDictLabel(datas, value);
+                        }else{
+                            var id = "td_"+row.mid + 4;
+                            var idval = row.mid;
+                            unitValue = row.unit;
+                            var option =[];
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                option.push('');
+                            }else{
+                                $.ajax({
+                                    url: ctx + 'system/dict/data/list',
+                                    type: 'post',
+                                    data: {dictType: 'sys_product_unit'},
+                                    async: false,
+                                    success: function (obj) {
+                                        var headOption = "<option value=''>请选择</option>";
+                                        for (var i = 0; i < obj.total; i++) {
+                                            if (value == obj.rows[i].dictValue) {
+                                                headOption += "<option value='" + obj.rows[i].dictValue + "' selected>" + obj.rows[i].dictLabel + "</option>";
+                                            } else {
+                                                headOption += "<option value='" + obj.rows[i].dictValue + "'>" + obj.rows[i].dictLabel + "</option>";
+                                            }
+                                        }
+                                        option = '<select id="'+id+'" onBlur = editMaterial('+'"'+unitValue+'"'+',4,'+'"unit"'+','+idval+') class="form-control" id="selNumber"' + index + ' name="registerName' + type + '" style="height:33px;">' + headOption + '</select>';
+                                    }
+                                });
+                            }
+                            return option;
+                        }
+                    }
+                }, {
+                    field: 'support',
+                    title: '供应商',
+                    formatter: function (value, row, index) {
+                        if(updateMaterial == "hidden"){
+                            return value
+                        }else{
+                            var actions = [];
+                            obj = row.support;
+                            var id = "td_"+row.mid + 5;
+                            var idval = row.mid;
+                            var data = $('#materTable' + type).bootstrapTable('getData', true);
+                            if (index == data.length - 1) {
+                                actions.push('')
+                            }else{
+                                if (value == null || value == "null") {
+                                    value = "";
+                                }
+                                actions.push('<input id="'+id+'" onBlur = editMaterial('+'"'+obj+'"'+',5,'+'"support"'+','+idval+') name="materialSupport' + type + '" value="' + value + '">');
+                            }
+                            return actions.join('');
+                        }
+                    }
+                },
+                {
+
+                    title: '操作',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        var data = $('#materTable' + type).bootstrapTable('getData', true);
+                        if (index == data.length - 1) {
+                            actions.push('')
+                        }else{
+                            actions.push('<a class="btn btn-danger btn-xs ' + removeMaterial + '" href="javascript:void(0)" onclick="removeMater('+ index+ ','+ row.mid + ')"><i class="fa fa-remove"></i>删除</a> ');
+                            actions.push('<a class="btn btn-info btn-xs ' + majorMaterial + '" href="javascript:void(0)" onclick="major('+ index+ ','+ row.mid + ')"><i class="fa fa-key"></i>重要</a>');
+                        }
+                        return actions.join('');
+                    }
+                }],
+                onReorderRow: function (data) {
+                    //当拖拽结束后，data为整个表格的数据
+                    /*mergeCells(data, "name", $('#materTable' + type))
+                    $("#materTable"+type).bootstrapTable({data:data})*/
+                    materialList = data;
+                    roll = 1;
+                },
+                onLoadSuccess: function () {
+                    var data = $('#materTable' + type).bootstrapTable('getData', true);
+                    mergeCells(data, "name", $('#materTable' + type))
+                    materialList = data;
+                    roll = 0;
+                    $("#tab-"+ (parseInt(type) + 1)).find(".fixed-table-pagination").css("display","none");//隐藏div
+                }
+        };
+        $.table.init(materOptions);
+
+    }
+
+    /*合并配料表的页脚单元格*/
+    function mergeCells(data, fieldName, target) {
+        for (var i = 0; i < data.length; i++) {
+            if (i == data.length - 1) {
+                $(target).bootstrapTable('mergeCells', {index: i, field: fieldName, colspan: 6, rowspan: 1});
+            }
+        }
+    }
+
+    /*拌和温度点击事件（修改）*/
+    $("#temperature").click(function () {
+        if (status == 2) {
+            $.modal.msgError("计划单已经完工！");
+            return;
+        }
+        var val = $("#temperature").text();
+        $("#temperature").text('');
+        var txt2 = $("<input id='temperatureVal' type='text' value='" + val + "'>");
+        $("#temperature").after(txt2);
+        $("#temperatureVal").focus();
+        $("#temperatureVal").blur(function () {
+            var valNew = $("#temperatureVal").val();
+            if (valNew != val && valNew != '') {
+                $.post(ctx + "product/produce/editTemperature",
+                    {
+                        productId: productId,
+                        temperature: $("#temperatureVal").val()
+                    },
+                    function (obj) {
+                        if (obj.code == 0) {
+                            $("#temperature").text(valNew);
+                            $("#temperatureVal").remove();
+                            $.modal.msgSuccess("修改成功");
+                        } else {
+                            $.modal.msgError(obj.msg);
+                        }
+                    });
+            } else {
+                $("#temperature").text(val);
+                $("#temperatureVal").remove();
+            }
+        });
+    });
+
+
+
+    /*配料动态插入*/
+    function insertRow() {
+        if (productId == 0) {
+            $.modal.alertError("请先选择一条生产单号");
+        } else if (procedureId == 0) {
+            $.modal.alertError("请先选择一个配方");
+        } else {
+            if(roll ==1){
+                $.modal.alertError("重新排序后，无法新增物料！");
+                clickmater(materialType, procedureId, materialName, materialIndex);
+            }
+            materialList .push($("#materTable" + materialType).bootstrapTable('insertRow', {
+                index: 0, // 你想插入到哪，0表示第一行
+                // id:"materTable",
+                row: {
+                    mid: index,
+                    name: "",
+                    dosage: "",
+                    drift: "",
+                    unit: "1",
+                    uuid: "",
+                    major:0,
+                    support: "",
+                    updateTime: ''
+                }
+            }))
+            index--;
+            mergeCells(materialList, "name", $('#materTable' + materialType))
+        }
+    }
+
+    /*删除配料按钮*/
+    function removeMater(index,mid) {
+        $.modal.confirm("确认要删除选中的数据吗?", function () {
+            $("#materTable" + materialType).bootstrapTable('removeByUniqueId', mid);
+            for(var i = 0; i <materialList.length -1 ;i++){
+                if(materialList[i].mid == mid){
+                    materialList.splice(i,1)
+                }
+            }
+            mergeCells(materialList, "name", $('#materTable' + materialType))
+        });
+    }
+
+    function major(index,mid){
+        for(var i = 0; i <materialList.length -1 ;i++){
+            if(materialList[i].mid == mid){
+                if($("#td_"+mid+materialType).css("color")=="rgb(255, 0, 0)"){
+                    $("#td_" + mid + materialType).css("color","black");
+                    $("#major" + mid + materialType).val(0)
+                }else {
+                    $("#td_" + mid + materialType).css("color","red");
+                    $("#major" + mid + materialType).val(1)
+                }
+            }
+        }
+    }
+    /*修改配料按钮*/
+    function editMaterial(value,inputid,field,id){
+        var inputValue = $("#td_"+id + inputid).val()
+        if(inputValue != value && inputValue!=''){
+            for(var i = 0; i <materialList.length-1 ;i++){
+                if(materialList[i].mid == id){
+                    if(field == "name"){
+                        materialList[i].name = inputValue;
+                        update = 1;         //修改配料名 更改app
+                    }else if(field == "dosage"){
+                        materialList[i].dosage = inputValue;
+                        update = 1;         //修改用量 更改app
+                    }else if(field == "drift"){
+                        materialList[i].drift = inputValue;
+                    }else if(field == "unit"){
+                        materialList[i].unit = inputValue;
+                        update = 1;         //修改计量单位 更改app
+                    }else if(field == "support"){
+                        materialList[i].support = inputValue;
+                    }
+                }
+            }
+        }
+    }
+
+    /*公用ajax,以JSON串传输*/
+    function ajaxJSON(url, data) {
+        var result = "";
+        $.ajax({
+            url: url,
+            data: JSON.stringify(data),
+            type: "post",
+            dataType: "json",
+            async: false,
+            contentType: "application/json;charset=utf-8",
+            success: function (obj) {
+                result = obj.msg;
+                if (obj.code == 0) {
+                    $.modal.alertSuccess("保存成功");
+                    $("#material" + materialType).val(procedureId);
+                    $("#material" + materialType).attr("disabled", "disabled");
+                    update = 0;
+                    materialTotal = 1;
+                    clickmater(materialType, procedureId, materialName, materialIndex);
+                } else {
+                    $.modal.alertError(result);
+                }
+            },
+            error: function (obj) {
+                $.modal.msgError("服务器发生未知错误！请联系管理员！");
+            }
+        });
+        return result;
+    }
+
+
+
+    /*保存配料按钮*/
+    function materialSave() {
+        var materialData = [];
+        var nameList = $("input[name='materialName"+materialType+"']");
+        var dosageList = $("input[name='materialDosage"+materialType+"']");
+        var supportList = $("input[name='materialSupport"+materialType+"']");
+        var driftList = $("input[name='drift"+materialType+"']");
+        var idList = $("input[name='materialId"+materialType+"']");
+        var uuidList = $("input[name='uuid"+materialType+"']");
+        var unitList = $("select[name='registerName"+materialType+"']");
+        var updateTimeList = $("input[name='updateTime"+materialType+"']");
+        var majorList = $("input[name='major"+materialType+"']");
+        var type = materialType;
+        var remark = $("#remark"+materialType).val();
+        for (var i = 0; i < idList.size(); i++) {
+            var mid = idList[i].value;
+            var uuid = uuidList[i].value;
+            var name = nameList[i].value;
+            var support = supportList[i].value;
+            var dosage = dosageList[i].value;
+            var drift = driftList[i].value;
+            var unit = unitList[i].value;
+            var updateTime = updateTimeList[i].value;
+            var major = majorList[i].value;
+            if (productId == 0) {
+                $.modal.msgError("请先选择计划单！");
+                return;
+            }
+            if (drift == "" || drift == null || drift == 'null') {
+                $.modal.msgError("第"+(i+1)+"行误差值不能为空或者null！");
+                return;
+            }
+            if (name == "" ||  name == null || name == 'null') {
+                $.modal.msgError("第"+(i+1)+"行物料名称不能为空或者null！");
+                return;
+            }
+            if (dosage == "" ||  dosage == null || dosage == 'null' ) {
+                $.modal.msgError("第"+(i+1)+"行物料数量不能为空或者null！");
+                return;
+            }
+            for (var j = i + 1; j < idList.size(); j++) {
+                var name_j = nameList[j].value;
+                if (name == name_j) {
+                    $.modal.msgError(name + "物料名称有冲突！");
+                    return;
+                }
+            }
+            var param = {
+                mid:mid,
+                uuid:uuid,
+                name: name,
+                support: support,
+                dosage: dosage,
+                drift: drift,
+                type: materialType,
+                unit: unit,
+                productId: productId,
+                productNo:productNo,
+                procedureId: procedureId,
+                remark: remark,
+                updateTime : updateTime,
+                major:major,
+                update : update
+            };
+            if (isNaN(dosage)) {
+                $.modal.alertError("物料数量请输入合法数字");
+                return;
+            }
+            if (isNaN(drift)) {
+                $.modal.alertError("误差值请输入合法数字");
+                return;
+            }
+            materialData.push(param);
+        }
+        if (materialData.length == 0) {
+            $.modal.alertError("无数据");
+            return;
+        }else{
+            ajaxJSON(ctx + "product/material/insertMaterialList", materialData);
+        }
+    }
+
+
+</script>
+</body>
+</html>

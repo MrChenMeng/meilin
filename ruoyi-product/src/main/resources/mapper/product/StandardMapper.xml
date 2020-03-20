@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.StandardMapper">
+
+  <resultMap id="StandardResult"              type="Standard">
+    <id     property="id"                     column="id" />
+    <result property="upperNumber"            column="upperNumber" />
+    <result property="lowerNumber"            column="lowerNumber" />
+    <result property="standardNumber"         column="standardNumber" />
+    <result property="detectedNumber"         column="detectedNumber" />
+    <result property="remark"                 column="remark" />
+    <result property="datastate"              column="datastate" />
+    <result property="standardName"           column="standardName"  />
+    <result property="uuid"                   column="uuid"  />
+    <result property="productId"              column="productId"  />
+    <result property="createTime"             column="create_time" />
+    <result property="updateBy"               column="update_by"   />
+    <result property="updateTime"             column="update_time" />
+    <result property="createBy"               column="create_by" />
+    <association property="check"             column="checkId"    javaType="CheckStandard" resultMap="checkResult" />
+  </resultMap>
+
+  <resultMap type="CheckStandard"       id="checkResult">
+    <id     property="id"               column="id"     />
+    <result property="parentId"         column="parent_id"   />
+    <result property="checkName"        column="check_name"   />
+    <result property="checkCode"        column="check_code"   />
+    <result property="parentName"       column="parent_name"   />
+  </resultMap>
+
+  <sql id="selectStandardVo">
+    select s.id, s.upperNumber,s.lowerNumber,s.standardNumber,s.detectedNumber,s.remark,s.datastate,s.standardName,s.create_by,s.uuid,s.productId,s.checkId,
+    c.parent_id,c.check_name,c.parent_name,c.check_code
+    from ml_standard s
+        left join ml_check_standard c on s.checkId = c.id
+
+  </sql>
+
+  <select id="selectByPrimaryKey" parameterType="Long" resultMap="StandardResult">
+  <include refid="selectStandardVo" />
+  where s.id = #{id} and s.datastate !=2
+</select>
+
+  <select id="selectByProductId" parameterType="Long" resultMap="StandardResult">
+    <include refid="selectStandardVo" />
+    where s.productId = #{productId} and s.datastate !=2
+  </select>
+
+  <select id="selectAll" parameterType="Standard"  resultMap="StandardResult">
+    <include refid="selectStandardVo" />
+    where s.datastate !=2
+    <if test="id!=null and id!=''">
+        and s.id = #{id}
+    </if>
+    <if test="productId != null and productId !=''">
+        and s.productId = #{productId}
+    </if>
+    <if test="productId == null or productId ==''">
+      and s.productId is null
+    </if>
+    <if test="productId == 0">
+      and 1= 2
+    </if>
+    <if test="checkId != null and checkId !=''">
+        and s.checkId = #{checkId}
+    </if>
+    <if test="checkId == null and checkId ==''">
+      and s.checkId is null
+    </if>
+    <if test="checkId == 0">
+      and 1=2
+    </if>
+    <if test="uuid != null and uuid != ''">
+      and s.uuid = #{uuid}
+    </if>
+  </select>
+
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    update ml_standard set datastate = 2
+    where id = #{id}
+  </delete>
+
+  <insert id="insert" parameterType="com.ruoyi.product.domain.Standard">
+    insert into ml_standard (standard, upperNumber,
+      lowerNumber, standardNumber, remark, 
+      datastate)
+    values (#{standard}, #{upperNumber},
+      #{lowerNumber}, #{standardNumber}, #{remark},
+      #{datastate})
+  </insert>
+
+  <insert id="insertSelective" parameterType="Standard" keyProperty="id">
+    insert into ml_standard
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="upperNumber != null">upperNumber,</if>
+      <if test="lowerNumber != null"> lowerNumber,</if>
+      <if test="standardNumber != null">standardNumber,</if>
+      <if test="detectedNumber != null">detectedNumber,</if>
+      <if test="remark != null"> remark,</if>
+      <if test="standardName != null and standardName !=''">standardName,</if>
+      <if test="uuid != null and uuid !=''">uuid,</if>
+      <if test="productId != null and productId !=''">productId,</if>
+      <if test="checkId != null and checkId !=''">checkId,</if>
+      <if test="createBy != null and createBy !=''">create_by,</if>
+      create_time,
+      datastate
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="upperNumber != null"> #{upperNumber},</if>
+      <if test="lowerNumber != null">#{lowerNumber},</if>
+      <if test="standardNumber != null">#{standardNumber},</if>
+      <if test="detectedNumber != null">#{detectedNumber},</if>
+      <if test="remark != null">#{remark},</if>
+      <if test="standardName != null and standardName!=''"> #{standardName}, </if>
+      <if test="uuid != null and uuid!=''"> #{uuid},</if>
+      <if test="productId != null and productId!=''">#{productId},</if>
+      <if test="checkId != null and checkId!=''">#{checkId},</if>
+      <if test="createBy != null and createBy !=''">#{createBy},</if>
+      sysdate(),
+      1
+    </trim>
+  </insert>
+
+  <update id="updateByPrimaryKeySelective" parameterType="com.ruoyi.product.domain.Standard">
+    update ml_standard
+    <set>
+      <if test="upperNumber != null">upperNumber = #{upperNumber},</if>
+      <if test="lowerNumber != null">lowerNumber = #{lowerNumber},</if>
+      <if test="standardNumber != null">standardNumber = #{standardNumber},</if>
+      <if test="detectedNumber != null">detectedNumber = #{detectedNumber},</if>
+      <if test="remark != null">remark = #{remark},</if>
+      <if test="datastate != null">datastate = #{datastate},</if>
+      <if test="standardName != null">standardName = #{standardName},</if>
+      <if test="uuid != null">uuid = #{uuid},</if>
+      <if test="productId != null">productId = #{productId},</if>
+      <if test="checkId != null">checkId = #{checkId},</if>
+      update_time = sysdate()
+    </set>
+    where id = #{id}
+  </update>
+
+
+  <update id="updateByPrimaryKey" parameterType="com.ruoyi.product.domain.Standard">
+    update ml_standard
+    set standard = #{standard},
+      upperNumber = #{upperNumber},
+      lowerNumber = #{lowerNumber},
+      standardNumber = #{standardNumber},
+      remark = #{remark},
+      datastate = #{datastate},
+      standardChild = #{standardChild}
+    where id = #{id}
+  </update>
+
+  <delete id="removeMaterialByIds" parameterType="Long">
+    update  ml_standard set datastate =2 where id in
+    <foreach collection="array" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </delete>
+
+  <select id="selectByProductIds" parameterType="Long" resultMap="StandardResult">
+    select standardName from ml_standard WHERE productId in
+      <foreach collection="array" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+     GROUP BY standardName
+  </select>
+
+  <delete id="deleteByTemplate" parameterType="Long">
+    update ml_standard set datastate = 2
+    where checkId = #{checkId}
+    AND productId is null
+  </delete>
+
+</mapper>

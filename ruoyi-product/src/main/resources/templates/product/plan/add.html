@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('新增产品')" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-plan-add">
+		<input name="status" hidden value="1">
+		<div class="form-group">
+			<label class="col-sm-2 control-label">产品名称：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="planName" id="planName" required >
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control"></textarea>
+			</div>
+		</div>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var prefix = ctx + "product/plan";
+
+	$("#form-plan-add").validate({
+		onkeyup: false,
+		rules:{
+            planName:{
+				minlength: 3,
+				remote: {
+					url: prefix + "/checkProductCodeUnique",
+					type: "post",
+					dataType: "json",
+					data: {
+                        planName : function() {
+						    //空格截取
+							return $.common.trim($("#planName").val());
+						}
+					},
+					dataFilter: function(data, type) {
+						return $.validate.unique(data);
+					}
+				}
+			},
+			orderNum:{
+				digits:true
+			}
+		},
+		messages: {
+			"planName": {
+				remote: "该产品名称已经存在"
+			}
+		},
+		focusCleanup: true
+	});
+
+	function submitHandler() {
+		if ($.validate.form()) {
+			$.operate.save(prefix + "/add", $('#form-plan-add').serialize());
+		}
+	}
+</script>
+</body>
+</html>

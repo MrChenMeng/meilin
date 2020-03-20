@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('新增二维码')" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-code-add" th:object="${qrCode}">
+		<input name="productNo" hidden th:field="*{productNo}">
+		<input name="lineId" hidden th:field="*{lineId}">
+		<input name="dataState" hidden value="1">
+		<input name="valid" hidden value="1">
+		<input name="isPrint" hidden value="1">
+		<th:block th:if="*{printId > 0}">
+			<input type="hidden" name="printId" th:field="*{printId}">
+		</th:block>
+		<th:block th:if="*{unit}">
+			<input type="hidden" name="unit" th:field="*{unit}">
+		</th:block>
+		<div class="form-group">
+			<label class="col-sm-2 control-label"><span style="color: red; ">*</span>打印模板：</label>
+			<div class="col-sm-9">
+				<select name="printId" class="form-control m-b" th:disabled="*{printId>0}">
+					<option th:each="print : ${printTemplateList}" th:text="${print.name}" th:value="${print.id}" th:selected="${print.id eq qrCode.printId} "></option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label"><span style="color: red; ">*</span>打印数量：</label>
+			<div class="col-sm-9">
+				<input type="text" class="form-control"  name="count" id="count" required>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label"><span style="color: red; ">*</span> 包装重量：</label>
+			<div class="col-sm-9">
+				<input type="text" class="form-control"  name="weight" id="weight" th:field="*{weight}" readonly required>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label"><span style="color: red; ">*</span>计量单位：</label>
+			<div class="col-sm-9">
+				<select name="unit" class="form-control m-b" th:disabled="*{unit}">
+					<option th:each="dict : ${dictDatas}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}" th:selected="${dict.dictValue eq qrCode.unit} "></option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control"></textarea>
+			</div>
+		</div>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var prefix = ctx + "product/code";
+
+	$("#form-code-add").validate({
+		onkeyup: false,
+		rules:{
+			count:{
+				digits:true
+			},
+			weight:{
+				digits:true
+			}
+		},
+		focusCleanup: true
+	});
+
+	function submitHandler() {
+		console.log($('#form-code-add').serialize())
+		if ($.validate.form()) {
+			$.operate.save(prefix + "/add", $('#form-code-add').serialize());
+		}
+	}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('历史记录')" />
+</head>
+<body class="gray-bg">
+     <div class="container-div">
+	    <form>
+	   	    <input type="hidden" th:value="*{productId}" name="productId" id="productId">
+	    </form>
+		<div class="row">
+			<div class="col-sm-12 select-table table-striped">
+				<table id="bootstrap-table" data-mobile-responsive="true"></table>
+			</div>
+		</div>
+
+	</div>
+	<th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "product/history";
+        var productId =$("#productId").val();
+        $(function() {
+
+            var options = {
+                url: prefix + "/list/"+productId,
+		        showSearch: false,
+		        showRefresh: false,
+		        showToggle: false,
+		        showColumns: false,
+				detailView: true,
+				detailFormatter: detailFormatter,
+                columns: [
+				{
+					field : 'productNo',
+					title : '计划单编号',
+					halign : 'center',
+					align : 'center'
+				},
+				{
+					field : 'createTime',
+					title : '创建时间',
+					halign: 'center',
+					align : 'center'
+				},
+				{
+					field : 'createBy',
+					title : '创建人',
+					halign: 'center',
+					align : 'center'
+				},
+				{
+					field : 'updateTime',
+					title : '更新时间',
+					halign: 'center',
+					align : 'center'
+				},
+				{
+					field : 'updateBy',
+					title : '更新人',
+					halign: 'center',
+					align : 'center'
+				},
+					{
+						field : 'remark',
+						title : '更新内容',
+						halign: 'center',
+						align : 'center'
+					}]
+            };
+            $.table.init(options);
+
+        });
+
+		function detailFormatter(index, row) {
+			var html = [];
+			$.each(row, function(key, value) {
+				if(key=='remark'){
+					var valStr = [];
+					valStr =value.split(',');
+					html.push('<p><b>' + "更新内容" + ':</b> </p>');
+					for(var i=0;i<valStr.length-1;i++){
+						var s =[];
+						s= valStr[i].split('：');
+						html.push('<p><b>' + s[0] + ':</b> ' + s[1] + '</p>');
+					}
+				}
+			});
+			return html.join('');
+		}
+
+		function submitHandler() {
+			$.modal.close();
+		}
+    </script>
+</body>
+</html>

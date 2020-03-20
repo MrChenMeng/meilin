@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <title>window调用打印接口</title>
+    <th:block th:include="include :: header('打印工单')" />
+</head>
+<body>
+<div class="box" id="box">
+
+    <table id="tempTable" class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>生产产线</th>
+            <th>销售订单号</th>
+            <th>产品名称</th>
+            <th>产品编码</th>
+            <th>生产单号</th>
+            <th>生产数量</th>
+            <th>包装规格</th>
+            <th>生产时间</th>
+            <th>交货时间</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>[[${productLine.lineName}]]</td>
+            <td>[[${product.orderNo}]]</td>
+            <td>[[${product.productName}]]</td>
+            <td>[[${product.productCode}]]</td>
+            <td>[[${product.productNo}]]</td>
+            <td>[[${product.productNum}]][[${product.productUnit}]]</td>
+            <td>[[${product.productSpecs}]]</td>
+            <td>[[${product.startTime}]]</td>
+            <td>[[${product.endTime}]]</td>
+        </tr>
+        </tbody>
+    </table>
+    <div>
+        <h4 style="text-align: center">助剂配方([[${product.productName}]]------[[${product.productNo}]])</h4>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="materTable1" class="table table-bordered table-striped" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+    <!--
+     style="page-break-after:always;" 分页打印
+    -->
+
+    <div style="padding-top: 20px;">
+        <h4 style="text-align: center">拌和配方([[${product.productName}]]------[[${product.productNo}]])</h4>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="materTable2" class="table table-bordered table-striped" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+
+    <div style="padding-top: 20px;">
+        <h4 style="text-align: center">挤塑温度([[${product.productName}]]------[[${product.productNo}]])</h4>
+        <div class="table-striped" id="dataDiv"></div>
+    </div>
+</div>
+
+<div class="row" >
+    <div class="col-sm-offset-5 col-sm-10" style="margin-left:46%">
+        <button type="button" class="btn btn-sm btn-primary" id="pr"><i class="fa fa-print"></i>打印</button>&nbsp;
+        <button type="button" class="btn btn-sm btn-danger" onclick="closeItem()"><i class="fa fa-remove"></i>关闭</button>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<!--<th:block th:include="include :: jQueryPint-js" />-->
+<script th:inline="javascript">
+
+    var datas = [[${@dict.getType('sys_product_unit')}]];
+
+    $(function(){
+        $("#dataDiv").load( ctx + "product/temperature/template" ,{"productId":[[${product.productId}]]});
+        var options = {
+            url: ctx + "product/material/materials",
+            modalName: name,
+            id: "materTable2",
+            queryParams: function (params) {
+                return {
+                    productId: [[${product.productId}]],
+                    type:2
+                };
+            },
+            uniqueId: "mid",
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            columns: [
+                {
+                    field: 'name',
+                    title: '拌和名称',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        var data = $('#materTable2').bootstrapTable('getData', true);
+                        if (index == data.length - 1) {
+                            remark =  row.remark;
+                            if (remark == null ||  remark == "null") {
+                                remark = "";
+                            }
+                            actions.push("<span style='font-size:18px'>备注："+ remark+"</span>");
+                        } else {
+                            actions.push(row.name);
+                        }
+
+                        return actions.join('');
+                    },
+                },
+                {
+                    field: 'dosage',
+                    title: '拌和数量',
+                },
+                {
+                    field: 'drift',
+                    title: '误差',
+                },
+                {
+                    field: 'unit',
+                    title: '计量单位',
+                    formatter: function(value, row, index) {
+                        return $.table.selectDictLabel(datas, value);
+                    }
+                }, {
+                    field: 'support',
+                    title: '供应商',
+                }],
+            onLoadSuccess: function () {
+                var data = $('#materTable2').bootstrapTable('getData', true);
+                mergeCells(data, "name", $('#materTable2'))
+                $(".fixed-table-pagination").css("display","none");//隐藏div
+            }
+
+        };
+        $.table.init(options);
+    })
+
+    $(function(){
+        var options = {
+            url: ctx + "product/material/materials",
+            modalName: name,
+            id: "materTable1",
+            queryParams: function (params) {
+                return {
+                    productId: [[${product.productId}]],
+                    type:1
+                };
+            },
+            uniqueId: "mid",
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            columns: [
+                {
+                    field: 'name',
+                    title: '助剂名称',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        var data = $('#materTable1').bootstrapTable('getData', true);
+                        if (index == data.length - 1) {
+                            remark =  row.remark;
+                            if (remark == null ||  remark == "null") {
+                                remark = "";
+                            }
+                            actions.push("<span style='font-size:18px'>备注："+ remark+"</span>");
+                        } else {
+                            actions.push(row.name);
+                        }
+
+                        return actions.join('');
+                    },
+                },
+                {
+                    field: 'dosage',
+                    title: '助剂数量',
+                },
+                {
+                    field: 'drift',
+                    title: '误差',
+                },
+                {
+                    field: 'unit',
+                    title: '计量单位',
+                    formatter: function(value, row, index) {
+                        return $.table.selectDictLabel(datas, value);
+                    }
+                }, {
+                    field: 'support',
+                    title: '供应商',
+                }],
+            onLoadSuccess: function () {
+                var data = $('#materTable1').bootstrapTable('getData', true);
+                mergeCells(data, "name", $('#materTable1'))
+                $(".fixed-table-pagination").css("display","none");//隐藏div
+            }
+        };
+        $.table.init(options);
+    })
+
+    function mergeCells(data, fieldName, target) {
+        for (var i = 0; i < data.length; i++) {
+            if (i == data.length - 1) {
+                $(target).bootstrapTable('mergeCells', {index: i, field: fieldName, colspan: 5, rowspan: 1});
+            }
+        }
+    }
+
+   $("#pr").on("click",function(){
+       preview("box")
+   });
+
+    function preview(id) { //打印 (id为容器ID)
+        var reElem = $(`#`+id); //渲染完成的表格，主容器
+        var printWin = window.open('打印窗口', '_blank'),
+            style = ['<style>', 'body{font-size: 9px; color: #666;}', 'table{width: 100%; border-collapse: collapse; border-spacing: 0;}', 'th,td{line-height: 9px; padding: 6px 9px; border: 1px solid #ccc; text-align: left; font-size: 9px; color: #666;}', 'a{color: #666; text-decoration:none;}', '*.layui-hide{display: none}', '</style>'].join(''),
+            html = reElem;
+        printWin.document.write(style + html.html());
+        // printWin.document.close();
+        printWin.print();
+        printWin.close();
+    }
+
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.TemperatureMapper">
+
+    <resultMap type="Temperature"               id="TemperatureResult">
+        <id     property="teId"                 column="te_id"     />
+        <result property="lineId"               column="line_id"   />
+        <result property="productId"            column="product_id"   />
+        <result property="place"                column="place"   />
+        <result property="placeCount"           column="place_count"   />
+        <result property="temperatureUpAvg"     column="temperature_up_avg"   />
+        <result property="temperatureDownAvg"   column="temperature_down_avg"   />
+        <result property="temperatureUpAct"     column="temperature_up_act"   />
+        <result property="temperatureDownAct"   column="temperature_down_act"   />
+        <result property="machineType"          column="machine_type"   />
+        <result property="machineTypes"         column="machine_types"   />
+        <result property="machineCount"         column="machine_count"   />
+        <result property="orderNum"             column="order_num"      />
+        <result property="createUser"           column="create_user"   />
+        <result property="lineOrder"            column="line_order"   />
+        <result property="createBy"             column="create_by"   />
+        <result property="status"               column="status"      />
+        <result property="createTime"           column="create_time" />
+        <result property="updateBy"             column="update_by"   />
+        <result property="updateTime"           column="update_time" />
+        <result property="remark"               column="remark" />
+        <association property="line"            column="line_id"    javaType="ProductLine" resultMap="lineResult" />
+    </resultMap>
+
+    <resultMap type="ProductLine"       id="lineResult">
+        <id     property="lineId"       column="line_Id"     />
+        <result property="lineCode"     column="line_code"   />
+        <result property="lineName"     column="line_name"   />
+    </resultMap>
+
+
+    <sql id="selectTemperatureVo">
+        SELECT t.te_id,t.line_id,t.status,t.place,t.place_count,t.temperature_up_avg,t.temperature_down_avg,t.temperature_down_act,t.product_id,t.temperature_up_act,t.remark,t.create_time,t.machine_type,t.machine_types,t.machine_count,t.order_num, l.line_name
+        FROM ml_temperature t
+            LEFT JOIN ml_product_line l ON t.line_id=l.line_Id
+    </sql>
+
+    <select id="selectTemperatureList" parameterType="Temperature" resultMap="TemperatureResult">
+        SELECT t.te_id,t.line_id,t.status,t.place,t.place_count,t.temperature_up_avg,t.temperature_down_avg,t.temperature_down_act,t.product_id,t.temperature_up_act,t.remark,t.create_time,t.machine_type,t.machine_types,t.machine_count,t.order_num,l.line_name,l.order_num as line_order
+        FROM ml_temperature t
+        LEFT JOIN ml_product_line l ON t.line_id=l.line_Id
+        where 1=1
+        <if test="lineId != null and lineId != ''">
+            AND t.line_Id = #{lineId}
+        </if>
+        <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+            AND date_format(t.create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            AND date_format(t.create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+        <if test="productId != null and productId !=''">
+            AND t.product_id = #{productId}
+        </if>
+        <if test="productId == null or productId ==''">
+            AND t.product_id is null
+        </if>
+    </select>
+
+
+    <select id="selectTemperatureListProductIdIsNull" parameterType="Temperature" resultMap="TemperatureResult">
+        SELECT t.te_id,t.line_id,t.status,t.place,t.place_count,t.temperature_up_avg,t.temperature_down_avg,t.temperature_down_act,t.product_id,t.temperature_up_act,t.remark,t.create_time,t.machine_type,t.machine_types,t.machine_count,t.order_num,l.line_name,l.order_num as line_order
+        FROM ml_temperature t
+        LEFT JOIN ml_product_line l ON t.line_id=l.line_Id
+        where 1=1
+        <if test="lineId != null and lineId != ''">
+            AND t.line_Id = #{lineId}
+        </if>
+        <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+            AND date_format(t.create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            AND date_format(t.create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+            AND t.product_id is null
+    </select>
+
+    <select id="selectTemperatureTemplate" resultMap="TemperatureResult">
+        <include refid="selectTemperatureVo"/>
+        where t.line_id = #{lineId} and product_id is null
+    </select>
+
+    <select id="selectTemperatureById" parameterType="Long" resultMap="TemperatureResult">
+        <include refid="selectTemperatureVo"/>
+            where t.te_id = #{teId}
+    </select>
+
+    <update id="updateTemperature" parameterType="Temperature">
+        update ml_temperature
+        <set>
+            <if test="lineId != null and lineId != ''">line_id = #{lineId},</if>
+            <if test="productId != null and productId != ''">product_id = #{productId},</if>
+            <if test="place != null and place != ''">place = #{place},</if>
+            <if test="placeCount != null and placeCount != ''">place_ount = #{placeCount},</if>
+            <if test="temperatureUpAvg != null and temperatureUpAvg != ''">temperature_up_avg = #{temperatureUpAvg},</if>
+            <if test="temperatureDownAvg != null and temperatureDownAvg != ''">temperature_down_avg = #{temperatureDownAvg},</if>
+            <if test="temperatureUpAct != null and temperatureUpAct != ''">temperature_up_act = #{temperatureUpAct},</if>
+            <if test="temperatureDownAct != null and temperatureDownAct != ''">temperature_down_act = #{temperatureDownAct},</if>
+            <if test="machineType != null and machineType != ''">machine_type = #{machineType},</if>
+            <if test="machineTypes != null and machineTypes != ''">machine_types = #{machineTypes},</if>
+            <if test="machineCount != null and machineCount != ''">machine_count = #{machineCount},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where te_id = #{teId}
+    </update>
+
+
+    <delete id="deleteTemperatureByIds" parameterType="Long">
+        delete from ml_temperature where te_id in
+        <foreach collection="array" item="teId" open="(" separator="," close=")">
+            #{teId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByproductId" parameterType="Long">
+        delete from ml_temperature where product_id = #{productId}
+    </delete>
+
+    <insert id="insertTemperature" parameterType="Temperature" useGeneratedKeys="true" keyProperty="lineId">
+        insert into ml_temperature(
+        <if test="lineId != null and lineId != ''">line_id,</if>
+        <if test="productId != null and productId != ''">product_id,</if>
+        <if test="place != null and place != ''">place,</if>
+        <if test="placeCount != null and placeCount != ''">place_count,</if>
+        <if test="temperatureUpAvg != null and temperatureUpAvg != ''">temperature_up_avg,</if>
+        <if test="temperatureDownAvg != null and temperatureDownAvg != ''">temperature_down_avg,</if>
+        <if test="temperatureUpAct != null and temperatureUpAct != ''">temperature_up_act,</if>
+        <if test="temperatureDownAct != null and temperatureDownAct != ''">temperature_down_act,</if>
+        <if test="machineType != null and machineType != ''">machine_type,</if>
+        <if test="machineTypes != null and machineTypes != ''">machine_types,</if>
+        <if test="machineCount != null and machineCount != ''">machine_count,</if>
+        <if test="orderNum != null">order_num,</if>
+        <if test="createUser != null and createUser != ''">create_user,</if>
+        <if test="status != null">status,</if>
+        <if test="remark != null and remark != ''">remark,</if>
+        create_time
+        )values(
+        <if test="lineId != null and lineId != ''">#{lineId},</if>
+        <if test="productId != null and productId != ''">#{productId},</if>
+        <if test="place != null and place != ''">#{place},</if>
+        <if test="placeCount != null and placeCount != ''">#{placeCount},</if>
+        <if test="temperatureUpAvg != null and temperatureUpAvg != ''">#{temperatureUpAvg},</if>
+        <if test="temperatureDownAvg != null and temperatureDownAvg != ''">#{temperatureDownAvg},</if>
+        <if test="temperatureUpAct != null and temperatureUpAct != ''">#{temperatureUpAct},</if>
+        <if test="temperatureDownAct != null and temperatureDownAct != ''">#{temperatureDownAct},</if>
+        <if test="machineType != null and machineType != ''">#{machineType},</if>
+        <if test="machineTypes != null and machineTypes != ''">#{machineTypes},</if>
+        <if test="machineCount != null and machineCount != ''">#{machineCount},</if>
+        <if test="orderNum != null">#{orderNum},</if>
+        <if test="createUser != null and createUser != ''">#{createUser},</if>
+        <if test="status != null">#{status},</if>
+        <if test="remark != null and remark != ''">#{remark},</if>
+        sysdate()
+        )
+    </insert>
+
+
+    <insert id="insertListTemp"  >
+        insert into ml_temperature(
+        line_id,
+        product_id,
+        place,
+        place_count,
+        temperature_up_avg,
+        temperature_down_avg,
+        temperature_up_act,
+        temperature_down_act,
+        machine_type,
+        machine_types,
+        machine_count,
+        order_num,
+        create_user,
+        status,
+        remark,
+        create_time
+        )
+        values
+        <foreach collection="temperatureList" separator="," item="t">
+        (
+        #{t.lineId},
+        #{productId},
+        #{t.place},
+        #{t.placeCount},
+        #{t.temperatureUpAvg},
+        #{t.temperatureDownAvg},
+        #{t.temperatureUpAct},
+        #{t.temperatureDownAct},
+        #{t.machineType},
+        #{t.machineTypes},
+        #{t.machineCount},
+        #{t.orderNum},
+        #{t.createUser},
+        #{t.status},
+        #{t.remark},
+        sysdate()
+        )
+        </foreach>
+    </insert>
+
+    <select id="selectByIds" parameterType="String" resultMap="TemperatureResult">
+        SELECT te_id,line_id,status,place,temperature_up_avg,temperature_down_avg,temperature_down_act,product_id,temperature_up_act,remark,create_time,machine_type,machine_types,machine_count,order_num
+        FROM ml_temperature
+        where 1=1
+        <if test="ids != null and ids != ''">
+            AND te_id in
+            <foreach collection="ids.split(',')" item="teid" open="(" separator="," close=")">
+                #{teid}
+            </foreach>
+        </if>
+    </select>
+
+
+
+</mapper>

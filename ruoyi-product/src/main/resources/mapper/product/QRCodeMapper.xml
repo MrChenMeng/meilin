@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.QRCodeMapper">
+
+    <resultMap  type="QRCode"               id="QRCodeResult">
+        <id     property="id"               column="id"     />
+        <result property="productNo"        column="product_no"   />
+        <result property="lineId"           column="line_id"   />
+        <result property="count"            column="count"   />
+        <result property="printId"          column="print_id"   />
+        <result property="weight"           column="weight"   />
+        <result property="chengZhong"       column="cheng_zhong"   />
+        <result property="sweepDate"        column="sweep_date"   />
+        <result property="valid"            column="valid"   />
+        <result property="isPrint"          column="is_print"   />
+        <result property="unit"             column="unit"   />
+        <result property="uuid"             column="uuid"   />
+        <result property="dataState"        column="data_state"   />
+        <result property="createBy"         column="create_by"   />
+        <result property="createTime"       column="create_time" />
+        <result property="updateBy"         column="update_by"   />
+        <result property="updateTime"       column="update_time" />
+        <result property="remark"           column="remark" />
+        <association property="print"       column="print_id"    javaType="PrintTemplate" resultMap="printResult" />
+    </resultMap>
+
+    <resultMap type="PrintTemplate"     id="printResult">
+        <id     property="id"           column="id"     />
+        <result property="name"         column="name"   />
+    </resultMap>
+
+    <sql id="selectQRCodeVo">
+        select c.id,c.product_no,c.weight,c.valid,c.data_state, c.remark,c.create_by,c.print_id,c.unit,c.is_print,c.uuid,c.count,c.create_time,
+        c.update_by,c.update_time,c.cheng_zhong,c.line_id,c.sweep_date,
+        p.name
+		from ml_qr_code c
+		LEFT JOIN sys_print_template p on p.id = c.print_id
+    </sql>
+
+    <select id="selectQRCodeList" parameterType="QRCode" resultMap="QRCodeResult">
+        <include refid="selectQRCodeVo"/>
+            where c.data_state = 1
+        <if test="valid != null and valid != ''">
+            AND c.valid = #{valid}
+        </if>
+        <if test="uuid != null and uuid != ''">
+            AND c.uuid = #{uuid}
+        </if>
+        <if test="productNo != null and productNo != ''">
+            AND c.product_no = #{productNo}
+        </if>
+        <if test="isPrint != null and isPrint != ''">
+            AND c.is_print = #{isPrint}
+        </if>
+        <if test="idStr != null and idStr != ''">
+            and c.id in (${idStr})
+        </if>
+        <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+            and date_format(c.create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            and date_format(c.create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+    </select>
+
+    <select id="selectCountGroup" parameterType="QRCode" resultMap="QRCodeResult">
+            SELECT count(count) as count,weight FROM ml_qr_code
+            WHERE data_state = 1
+            <if test="valid != null and valid != ''">
+                AND valid = #{valid}
+            </if>
+            <if test="uuid != null and uuid != ''">
+                AND c.uuid = #{uuid}
+            </if>
+            <if test="productNo != null and productNo != ''">
+                AND product_no = #{productNo}
+            </if>
+            <if test="isPrint != null and isPrint != ''">
+                AND is_print = #{isPrint}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+                and date_format(create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+                and date_format(create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+            GROUP BY weight
+    </select>
+
+    <select id="getMaxCodeNo" parameterType="QRCode" resultType="String">
+        select  max(uuid) from ml_qr_code
+        where data_state =1
+        and date_format(create_time,'%y%m%d') = date_format(#{createTime},'%y%m%d')
+    </select>
+
+
+    <select id="selectQRCodeById" parameterType="Long" resultMap="QRCodeResult">
+        <include refid="selectQRCodeVo"/>
+        where c.data_state = 1 and c.id = #{id}
+    </select>
+
+    <select id="selectQRCodeByUuid" parameterType="String" resultMap="QRCodeResult">
+        <include refid="selectQRCodeVo"/>
+        where  c.uuid = #{uuid}
+    </select>
+
+    <update id="updateQRCode" parameterType="QRCode">
+        update ml_qr_code
+        <set>
+            <if test="productNo != null and productNo != ''">product_no = #{productNo},</if>
+            <if test="isPrint != null and isPrint != ''">is_print = #{isPrint},</if>
+            <if test="uuid != null and uuid != ''">uuid = #{uuid},</if>
+            <if test="unit != null and unit != ''">unit = #{unit},</if>
+            <if test="weight != null and weight != ''">weight = #{weight},</if>
+            <if test="chengZhong != null and chengZhong != ''">cheng_zhong = #{chengZhong},</if>
+            <if test="sweepDate != null">sweep_date = #{sweepDate},</if>
+            <if test="valid != null">valid = #{valid},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="printId != null">print_id = #{printId},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+
+    <delete id="deleteQRCodeByIds" parameterType="Long">
+        update ml_qr_code set data_state =2 where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <insert id="insertQRCode" parameterType="QRCode">
+        insert into ml_qr_code(
+        <if test="weight != null and weight != ''">weight,</if>
+        <if test="productNo != null and productNo != ''">product_no,</if>
+        <if test="lineId != null and lineId != ''">line_id,</if>
+        <if test="uuid != null and uuid != ''">uuid,</if>
+        <if test="printId != null and printId != ''">print_id,</if>
+        <if test="valid != null">valid,</if>
+        <if test="isPrint != null">is_print,</if>
+        <if test="unit != null">unit,</if>
+        <if test="count != null">count,</if>
+        <if test="dataState != null">data_state,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
+        <if test="remark != null and remark != ''">remark,</if>
+        create_time
+        )values(
+        <if test="weight != null and weight != ''">#{weight},</if>
+        <if test="productNo != null and productNo != ''">#{productNo},</if>
+        <if test="lineId != null and lineId != ''">${lineId},</if>
+        <if test="uuid != null and uuid != ''">#{uuid},</if>
+        <if test="printId != null and printId != ''">#{printId},</if>
+        <if test="valid != null">#{valid},</if>
+        <if test="isPrint != null">#{isPrint},</if>
+        <if test="unit != null">#{unit},</if>
+        <if test="count != null">#{count},</if>
+        <if test="dataState != null">#{dataState},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
+        <if test="remark != null and remark != ''">#{remark},</if>
+        sysdate()
+        )
+    </insert>
+
+    <delete id="checkOver" parameterType="Long">
+        update ml_qr_code set is_print =2 where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+</mapper>

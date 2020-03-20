@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.ProductPlanMapper">
+
+    <resultMap type="ProductPlan" id="ProductPlanResult">
+        <id     property="planId"        column="plan_id"       />
+        <result property="planName"      column="plan_name"     />
+        <result property="remark"        column="remark"        />
+    </resultMap>
+
+    <sql id="selectProductPlanVo">
+        select plan_id, plan_name,remark,data_state
+		from ml_plan
+    </sql>
+
+    <select id="selectProductPlanList" parameterType="ProductPlan" resultMap="ProductPlanResult">
+        <include refid="selectProductPlanVo"/>
+        where data_state=1
+    </select>
+
+
+
+    <select id="checkPlanCode" parameterType="String" resultMap="ProductPlanResult">
+        <include refid="selectProductPlanVo"/>
+        where plan_name=#{planName}
+        and data_state=1
+</select>
+
+    <insert id="insertProductPlan" parameterType="ProductPlan" keyProperty="planId" useGeneratedKeys="true" keyColumn="plan_id">
+        insert into ml_plan
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="planName != null and planName != ''">plan_name,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="dataState != null">data_state,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="planName != null and planName != ''">#{planName},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="dataState != null">#{dataState},</if>
+        </trim>
+
+    </insert>
+
+    <select id="selectByPlanId" resultMap="ProductPlanResult">
+        <include refid="selectProductPlanVo"/>
+		where plan_id=#{planId}
+        and data_state=1
+    </select>
+    <update id="updateProductPlan" >
+        update ml_plan
+        <set>
+            <if test="planName != null and planName != ''">
+                plan_name=#{planName},
+            </if>
+            <if test="remark != null and remark != ''">
+                remark=#{remark},
+            </if>
+            <if test="dataState != null">
+                data_state=#{dataState},
+            </if>
+        </set>
+        where plan_id=#{planId}
+    </update>
+    <update id="deleteProductPlanByIds">
+        update ml_plan set data_state=2 where plan_id in
+        <foreach collection="array" item="proId" open="(" separator="," close=")">
+            #{proId}
+        </foreach>
+    </update>
+</mapper>

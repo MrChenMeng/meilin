@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('检测行业标准表')" />
+	<th:block th:include="include :: layout-latest-css" />
+	<th:block th:include="include :: ztree-css" />
+	<style type="text/css">
+		#position{
+			position:fixed;
+			left:0px;
+			top:48px;
+			width: 330px;
+			height: 50px;
+			text-align: left;
+			background-color:white;
+		}
+	</style>
+</head>
+<body class="gray-bg">
+<div class="ui-layout-west">
+	<div class="main-content">
+		<div class="box box-main">
+			<div class="box-header">
+				<div class="box-title">
+					<i class="fa icon-grid"></i> 检测行业
+				</div>
+				<div class="box-tools pull-right">
+					<a type="button" class="btn btn-box-tool menuItem" href="#" onclick="checkStandard()" title="检测行业"><i class="fa fa-edit"></i></a>
+					<button type="button" class="btn btn-box-tool" id="btnExpand" title="展开" style="display:none;"><i class="fa fa-chevron-up"></i></button>
+					<button type="button" class="btn btn-box-tool" id="btnCollapse" title="折叠"><i class="fa fa-chevron-down"></i></button>
+					<button type="button" class="btn btn-box-tool" id="btnRefresh" title="刷新检测行业"><i class="fa fa-refresh"></i></button>
+				</div>
+			</div>
+			<div class="ui-layout-content">
+				<div class="btn-group-sm " id="position">
+					<a class="btn btn-success btn-rounded" onclick="addCheck()" shiro:hasPermission="product:check:add">
+						<i class="fa fa-plus"></i> 新增
+					</a>
+					<a class="btn btn-primary btn-rounded" onclick="editCheck()" shiro:hasPermission="product:check:edit">
+						<i class="fa fa-edit"></i> 修改
+					</a>
+					<a class="btn btn-danger btn-rounded" onclick="removeCheck()" shiro:hasPermission="product:check:remove">
+						<i class="fa fa-remove"></i> 删除
+					</a>
+				</div>
+				<div id="tree" style="padding-top:40px;" class="ztree">
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<form id="user-form">
+	<input type="hidden" id="checkId" name="checkId" value="">
+</form>
+
+<div class="ui-layout-center">
+	<div class="wrapper wrapper-content">
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="ibox float-e-margins">
+					<div class="ibox float-e-margins">
+						<div class="btn-group-sm" id="toolbar" role="group">
+							<a class="btn btn-success" onclick="add()" shiro:hasPermission="product:standard:add">
+								<i class="fa fa-plus"></i> 新增
+							</a>
+							<a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="product:standard:edit">
+								<i class="fa fa-edit"></i> 修改
+							</a>
+							<a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="product:standard:remove">
+								<i class="fa fa-remove"></i> 删除
+							</a>
+						</div>
+						<div class="col-sm-12 select-table table-striped">
+							<table id="bootstrap-table" data-mobile-responsive="true"></table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: layout-latest-js" />
+<th:block th:include="include :: ztree-js" />
+<script th:inline="javascript">
+	var editFlag = [[${@permission.hasPermi('product:standard:edit')}]];
+	var removeFlag = [[${@permission.hasPermi('product:standard:remove')}]];
+	var datas = [[${@dict.getType('product_detect_standard')}]];
+	var prefix = ctx + "product/standard";
+	var checkId =0 ;
+	var checkName="";
+
+	$(function() {
+		var panehHidden = false;
+		if ($(this).width() < 769) {
+			panehHidden = true;
+		}
+		$('body').layout({ initClosed: panehHidden, west__size: 330 });
+		queryStandardList();
+		queryStandard();
+	});
+
+	function queryStandardList() {
+		var options = {
+			url: prefix + "/list",
+			updateUrl: prefix + "/edit/{id}",
+			removeUrl: prefix + "/remove",
+			modalName: "检测标准",
+			uniqueId: "id",
+			clickToSelect: true,
+			showSearch: false,
+			showRefresh: true,
+			showToggle: false,
+			showColumns: false,
+			columns: [{
+				checkbox: true
+			},
+				{
+					field: 'check.checkName',
+					title: '检测行业标准'
+				},
+				{
+					field: 'standardName',
+					title: '检测项目'
+				},
+				{
+					field: 'upperNumber',
+					title: '上限'
+				},
+				{
+					field: 'lowerNumber',
+					title: '下限'
+				},
+				{
+					field: 'standardNumber',
+					title: '标准值'
+				},
+				{
+					field: 'remark',
+					title: '备注'
+				},
+				{
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row, index) {
+						var actions = [];
+						actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.id + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+						actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a> ');
+						return actions.join('');
+					}
+				}]
+		};
+		$.table.init(options);
+	}
+
+	function add() {
+		var id = $("#checkId").val();
+		if(id==''){
+			$.modal.msgError("请先选择检测行业");
+		}
+		else{
+			$.modal.open("新增标准",prefix + "/add/"+id);
+		}
+	}
+
+	function zTreeOnRemove(event, treeId, treeNode) {
+		checkId = treeNode.id;
+		checkName = treeNode.name;
+		console.log(treeNode)
+		$.modal.confirm("确定要删除[" + checkName + "]检测行业",function(){
+			var url = ctx + "product/check/remove/" + checkId;
+			var data = {};
+			$.operate.submit(url, "get", "json", data,function () {
+				queryStandard();
+			});
+		});
+	}
+
+	function zTreeOnRename(event, treeId, treeNode, isCancel) {
+		checkId = treeNode.id;
+		$.modal.open("编辑检测行业", ctx + "product/check/edit/"+checkId);
+	}
+
+	function queryStandard()
+	{
+		var url = ctx+ "product/check/treeData";
+		var options = {
+			url: url,
+			expandLevel: 2,
+			view:{
+				selectedMulti: false,      			// 设置是否允许同时选中多个节点
+				nameIsHTML: true,           		// 设置 name 属性是否支持 HTML 脚本
+				addHoverDom: addHoverDom,			//用于当鼠标移动到节点上时，显示用户自定义控件，显示隐藏状态同 zTree 内部的编辑、删除按钮
+				removeHoverDom: removeHoverDom, 	//用于当鼠标移出节点时，隐藏用户自定义控件
+			},callback: {
+				beforeClick: true,					//用于捕获单击节点之前的事件回调函数，并且根据返回值确定是否允许单击操作
+				// beforeEditName: true,				//用于捕获节点编辑按钮的 click 事件，并且根据返回值确定是否允许进入名称编辑状态
+				// beforeRemove: true,					//用于捕获节点被删除之前的事件回调函数，并且根据返回值确定是否允许删除操作
+				// beforeRename: true,					//用于捕获节点编辑名称结束（Input 失去焦点 或 按下 Enter 键）之后，更新节点名称数据之前的事件回调函数，并且根据返回值确定是否允许更改名称的操作
+				// onRemove: zTreeOnRemove,			//用于捕获删除节点之后的事件回调函数。
+				onClick: zOnClick,					//用于捕获节点被点击的事件回调函数
+				// onRename: zTreeOnRename				//用于捕获节点编辑名称结束之后的事件回调函数。
+			},
+			edit:{
+				editNameSelectAll: true,		//节点编辑名称 input 初次显示时,设置 txt 内容是否为全选状态
+				enable: true ,			 		//设置 zTree 是否处于编辑状态
+				// removeTitle: "删除行业", 		//删除按钮的 Title 辅助信息
+				// renameTitle: "编辑行业",		//编辑名称按钮的 Title 辅助信息
+				showRemoveBtn : false,			//设置是否显示删除按钮
+				showRenameBtn : false,			//设置是否显示删除按钮
+			},
+		};
+		$.tree.init(options);
+	}
+
+	var newCount = 1;
+	function addHoverDom(treeId, treeNode) {
+		var sObj = $("#" + treeNode.tId + "_span");
+		if (treeNode.editNameFlag || $("#addBtn_" + treeNode.tId).length > 0 || $("#editBtn_" + treeNode.tId).length > 0) return;
+		var addStr = "<span class='button add' id='addBtn_" + treeNode.tId
+				+ "' title='添加' onfocus='this.blur();' ></span>";
+		var editStr = "<span class='button edit' id='editBtn_" + treeNode.tId
+				+ "' title='修改' onfocus='this.blur();' ></span>";
+		var removeStr = "<span class='button remove' id='removeBtn_" + treeNode.tId
+				+ "' title='删除' onfocus='this.blur();' ></span>";
+		sObj.after(removeStr);
+		sObj.after(editStr);
+		sObj.after(addStr);
+		var btn = $("#addBtn_" + treeNode.tId);
+		if (btn) btn.bind("click", function () {
+			checkId = treeNode.id;
+			$.modal.open("添加检测行业", ctx + "product/check/add/"+checkId );
+			return false;
+		});
+		var btn2 = $("#editBtn_" + treeNode.tId);
+		if (btn2) btn2.bind("click", function () {
+			checkId = treeNode.id;
+			$.modal.open("编辑检测行业", ctx + "product/check/edit/"+checkId);
+			return false;
+		});
+		var btn3 = $("#removeBtn_" + treeNode.tId);
+		if (btn3) btn3.bind("click", function () {
+			checkId = treeNode.id;
+			checkName = treeNode.title
+			removeCheck(checkId,checkName);
+			return false;
+		});
+	};
+
+	function removeHoverDom(treeId, treeNode) {
+		$("#addBtn_" + treeNode.tId).unbind().remove();
+		$("#editBtn_" + treeNode.tId).unbind().remove();
+		$("#removeBtn_" + treeNode.tId).unbind().remove();
+	};
+
+	function zOnClick(event, treeId, treeNode) {
+		checkId = treeNode.id;
+		checkName = treeNode.title
+		$("#checkId").val(treeNode.id);
+		$.table.search();
+	}
+
+	function addCheck(){
+		$.modal.open("添加检测行业", ctx + "product/check/add/"+checkId );
+	}
+
+	function editCheck(){
+		if(checkId == 0){
+			$.modal.msgError("请先选择要编辑的检测行业");
+			return;
+		}
+		$.modal.open("编辑检测行业", ctx + "product/check/edit/"+checkId);
+	}
+
+	function removeCheck(checkId,checkName){
+		if(checkId == 0){
+			$.modal.msgError("请先选择要删除的检测行业");
+			return;
+		}
+		$.modal.confirm("确定要删除[" + checkName + "]检测行业",function(){
+			var url = ctx + "product/check/remove/" + checkId;
+			var data = {};
+			$.operate.submit(url, "get", "json", data,function () {
+				queryStandard();
+			});
+		});
+	}
+
+	function checkStandard(){
+		var url = ctx + "product/check";
+		$.modal.openTab("检测行业", url);
+	}
+
+	$('#btnRefresh').click(function() {
+		checkId =0 ;
+		checkName="";
+		queryStandard();
+	});
+
+	$('#btnExpand').click(function() {
+		$._tree.expandAll(true);
+		$(this).hide();
+		$('#btnCollapse').show();
+	});
+
+	$('#btnCollapse').click(function() {
+		$._tree.expandAll(false);
+		$(this).hide();
+		$('#btnExpand').show();
+	});
+</script>
+</body>
+</html>

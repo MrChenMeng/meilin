@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.TemperaturePanelMapper">
+
+    <resultMap type="TemperaturePanel" id="TemperaturePanelResult">
+        <id     property="id"                column="id"          />
+        <result property="values1 "          column="values1 "    />
+        <result property="values2 "          column="values2 "    />
+        <result property="values3 "          column="values3 "    />
+        <result property="values4 "          column="values4 "    />
+        <result property="values5 "          column="values5 "    />
+        <result property="values6 "          column="values6 "    />
+        <result property="values7 "          column="values7 "    />
+        <result property="values8 "          column="values8 "    />
+        <result property="values9 "          column="values9 "    />
+        <result property="values10"          column="values10"    />
+        <result property="values11"          column="values11"    />
+        <result property="values12"          column="values12"    />
+        <result property="values13"          column="values13"    />
+        <result property="values14"          column="values14"    />
+        <result property="values15"          column="values15"    />
+        <result property="values16"          column="values16"    />
+        <result property="values17"          column="values17"    />
+        <result property="values18"          column="values18"    />
+        <result property="values19"          column="values19"    />
+        <result property="values20"          column="values20"    />
+        <result property="values21"          column="values21"    />
+        <result property="values22"          column="values22"    />
+        <result property="values23"          column="values23"    />
+        <result property="values24"          column="values24"    />
+        <result property="values25"          column="values25"    />
+        <result property="values26"          column="values26"    />
+        <result property="values27"          column="values27"    />
+        <result property="values28"          column="values28"    />
+        <result property="values29"          column="values29"    />
+        <result property="values30"          column="values30"    />
+        <result property="values31"          column="values31"    />
+        <result property="values32"          column="values32"    />
+        <result property="values33"          column="values33"    />
+        <result property="values34"          column="values34"    />
+        <result property="values35"          column="values35"    />
+        <result property="values36"          column="values36"    />
+        <result property="values37"          column="values37"    />
+        <result property="values38"          column="values38"    />
+        <result property="values39"          column="values39"    />
+        <result property="values40"          column="values40"    />
+        <result property="values41"          column="values41"    />
+        <result property="values42"          column="values42"    />
+        <result property="values43"          column="values43"    />
+        <result property="values44"          column="values44"    />
+        <result property="values45"          column="values45"    />
+        <result property="values46"          column="values46"    />
+        <result property="values47"          column="values47"    />
+        <result property="values48"          column="values48"    />
+        <result property="values49"          column="values49"    />
+        <result property="values50"          column="values50"    />
+        <result property="values51"          column="values51"    />
+        <result property="values52"          column="values52"    />
+        <result property="values53"          column="values53"    />
+        <result property="values54"          column="values54"    />
+        <result property="values55"          column="values55"    />
+        <result property="values56"          column="values56"    />
+        <result property="values57"          column="values57"    />
+        <result property="values58"          column="values58"    />
+        <result property="values59"          column="values59"    />
+        <result property="values60"          column="values60"    />
+        <result property="lineId"          column="line_id"    />
+        <result property="dt"          column="dt"    />
+        <result property="number"          column="number"    />
+    </resultMap>
+
+    <select id="temperature"  parameterType="TemperaturePanel" resultMap="TemperaturePanelResult">
+        SELECT l.line_id as line_id, t.*
+        from  TagValues t
+        LEFT JOIN line l on t.number = l.avg_num or t.number = l.act_num
+        <where>
+            <if test="lineIds !=null and lineIds != ''">
+                and l.line_id in
+                <foreach collection="lineIds.split(',')" item="lineId" open="(" separator="," close=")">
+                    #{lineId}
+                </foreach>
+            </if>
+            <if test="params.startTime != null and params.startTime != ''">
+                and t.dt >= #{params.startTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and #{params.endTime} >= t.dt
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="TemperaturePanelResult">
+        select * from TagValues WITH(NOLOCK) where id = #{id}
+    </select>
+
+
+    <select id="top12" resultType="Long">
+        select top 12 id from TagValues WITH(NOLOCK) ORDER BY dt desc
+    </select>
+
+</mapper>

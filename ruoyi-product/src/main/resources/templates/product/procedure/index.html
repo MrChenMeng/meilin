@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('拌和配方表')" />
+	<th:block th:include="include :: layout-latest-css" />
+	<th:block th:include="include :: ztree-css" />
+</head>
+<body class="gray-bg">
+<div class="ui-layout-west">
+	<div class="main-content">
+		<div class="box box-main">
+			<div class="box-header">
+				<div class="box-title">
+					<i class="fa icon-grid"></i> 物料类型
+				</div>
+				<div class="box-tools pull-right">
+					<a type="button" class="btn btn-box-tool menuItem" href="#" onclick="procedure()" title="字典数据"><i class="fa fa-edit"></i></a>
+					<button type="button" class="btn btn-box-tool" id="btnRefresh" title="刷新物料类型"><i class="fa fa-refresh"></i></button>
+				</div>
+			</div>
+			<div class="ui-layout-content">
+				<div id="tree"  class="ztree">
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<form id="procedure-form">
+	<input type="hidden" id="type" name="type" value="0">
+</form>
+
+<div class="ui-layout-center">
+	<div class="wrapper wrapper-content">
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="ibox float-e-margins">
+					<div class="ibox float-e-margins">
+						<div class="btn-group-sm" id="toolbar" role="group">
+							<a class="btn btn-success" onclick="add()" shiro:hasPermission="product:procedure:add">
+								<i class="fa fa-plus"></i> 新增
+							</a>
+							<a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="product:procedure:edit">
+								<i class="fa fa-edit"></i> 修改
+							</a>
+							<a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="product:procedure:remove">
+								<i class="fa fa-remove"></i> 删除
+							</a>
+						</div>
+						<div class="col-sm-12 select-table table-striped">
+							<table id="bootstrap-table" data-mobile-responsive="true"></table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: layout-latest-js" />
+<th:block th:include="include :: ztree-js" />
+<script th:inline="javascript">
+	var editFlag = [[${@permission.hasPermi('product:procedure:edit')}]];
+	var removeFlag = [[${@permission.hasPermi('product:procedure:remove')}]];
+	var datas = [[${@dict.getType('product_material_type')}]];
+	var prefix = ctx + "product/procedure";
+
+
+	$(function() {
+		var panehHidden = false;
+		if ($(this).width() < 769) {
+			panehHidden = true;
+		}
+		$('body').layout({ initClosed: panehHidden, west__size: 200 });
+		queryProcedureList();
+		queryProcedure();
+	});
+
+	function queryProcedureList() {
+		var options = {
+			url: prefix + "/list",
+			updateUrl: prefix + "/edit/{id}",
+			removeUrl: prefix + "/remove",
+			modalName: "物料",
+			uniqueId: "id",
+			clickToSelect: true,
+			showSearch:false,
+			showColumns:false,
+			showToggle:false,
+			showExport:false,
+			columns: [{
+				checkbox: true
+			},
+				{
+					field: 'name',
+					title: '物料名称'
+				},
+				{
+					field: 'type',
+					title: '物料类型',
+					formatter: function(value, row, index) {
+						return $.table.selectDictLabel(datas, value);
+					}
+				},
+				{
+					field: 'remark',
+					title: '备注'
+				},
+				{
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row, index) {
+						var actions = [];
+						actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.id + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+						actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a> ');
+						return actions.join('');
+					}
+				}]
+		};
+		$.table.init(options);
+	}
+
+	function queryProcedure() {
+		var url = prefix + "/treeData";
+		var options = {
+			url: url,
+			expandLevel: 2,
+			callback: {
+				beforeClick: true,					//用于捕获单击节点之前的事件回调函数，并且根据返回值确定是否允许单击操作
+				onClick: zOnClick					//用于捕获节点被点击的事件回调函数
+			}
+		};
+		$.tree.init(options);
+
+		function zOnClick(event, treeId, treeNode) {
+			$("#type").val(treeNode.id);
+			$.table.search("procedure-form");
+		}
+	}
+	
+	
+
+	function add(){
+		var type = $("#type").val();
+		$.modal.open("新增物料",prefix + "/add/" + type);
+	}
+
+	$('#btnRefresh').click(function() {
+		queryProcedure();
+	});
+
+	/* 字典数据 */
+	function procedure() {
+		var url = ctx + "system/dict/detail/105";
+		$.modal.openTab("字典数据", url);
+	}
+
+</script>
+</body>
+</html>

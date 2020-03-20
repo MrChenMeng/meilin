@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('产线信息')" />
+	<th:block th:include="include :: layout-latest-css" />
+	<th:block th:include="include :: ztree-css" />
+</head>
+<body class="gray-bg">
+<div class="ui-layout-west">
+	<div class="main-content">
+		<div class="box box-main">
+			<div class="box-header">
+				<div class="box-title">
+					<i class="fa icon-grid"></i> 产线信息
+				</div>
+				<div class="box-tools pull-right">
+					<a type="button" class="btn btn-box-tool menuItem" href="#" onclick="productLine()" title="管理产线"><i class="fa fa-edit"></i></a>
+					<button type="button" class="btn btn-box-tool" id="btnExpand" title="展开" style="display:none;"><i class="fa fa-chevron-up"></i></button>
+					<button type="button" class="btn btn-box-tool" id="btnCollapse" title="折叠"><i class="fa fa-chevron-down"></i></button>
+					<button type="button" class="btn btn-box-tool" id="btnRefresh" title="刷新产线"><i class="fa fa-refresh"></i></button>
+				</div>
+			</div>
+			<div class="ui-layout-content">
+				<div id="tree" class="ztree"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<form id="user-form">
+	<input type="hidden" id="lineId" name="lineId" value="0">
+	<input type="hidden" id="parentId" name="parentId">
+</form>
+
+<div class="ui-layout-center">
+	<div class="wrapper wrapper-content">
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="ibox float-e-margins">
+					<div class="ibox float-e-margins">
+					<div class="btn-group-sm" id="toolbar" role="group">
+						<a class="btn btn-success" onclick="add()" shiro:hasPermission="product:temperature:add">
+							<i class="fa fa-plus"></i> 新增
+						</a>
+						<a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="product:temperature:edit">
+							<i class="fa fa-edit"></i> 修改
+						</a>
+						<a class="btn btn-danger multiple disabled" onclick="removeAll()" shiro:hasPermission="product:temperature:remove">
+							<i class="fa fa-remove"></i> 删除
+						</a>
+					</div>
+					<div class="col-sm-12 select-table table-striped">
+				<table id="bootstrap-table" data-mobile-responsive="true"></table>
+			</div>
+				</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-sm-12" ><div class="ibox float-e-margins"></div></div>
+		</div>
+
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="ibox float-e-margins">
+					<div class="ibox-title">
+						<h5>温度面板效果图</h5>
+					</div>
+					<div id="dataDiv">
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+</div>
+
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var editFlag = [[${@permission.hasPermi('product:temperature:edit')}]];
+	var removeFlag = [[${@permission.hasPermi('product:temperature:remove')}]];
+	var datas = [[${@dict.getType('sys_normal_disable')}]];
+	var machDatas = [[${@dict.getType('product_temperature_machine')}]];
+	var prefix = ctx + "product/temperature";
+
+	$(function() {
+		var panehHidden = false;
+		if ($(this).width() < 769) {
+			panehHidden = true;
+		}
+		$('body').layout({ initClosed: panehHidden, west__size: 185 });
+		queryTempList();
+		queryLineTree();
+	});
+
+	function queryTempList() {
+		var options = {
+			url: prefix + "/list",
+			createUrl: prefix + "/add",
+			updateUrl: prefix + "/edit/{id}",
+			removeUrl: prefix + "/remove",
+			exportUrl: prefix + "/export",
+			importUrl: prefix + "/importData",
+			importTemplateUrl: prefix + "/importTemplate",
+			uniqueId: "teId",
+			clickToSelect: true,
+			sortName: "lineOrder",
+			sortOrder: "desc",
+			sortName: "orderNum",
+			sortOrder: "asc",
+			modalName: "温度",
+			columns: [{
+				checkbox: true
+			},
+				{
+					field: 'line.lineName',
+					title: '生产产线'
+				},
+				{
+					field: 'place',
+					title: '区域'
+				},
+				{
+					field: 'machineTypes',
+					title: '机位类型',
+					align: 'center',
+					formatter: function(value, row, index) {
+						var arr = value.split(",");
+						var actions = [];
+						for(var i = 0 ;i < arr.length; i++ ){
+							actions.push($.table.selectDictLabel(machDatas, arr[i]))
+							if(i != arr.length -1){
+								actions.push("&")
+							}
+						}
+						return actions.join('');
+					}
+				}
+				,{
+					field: 'temperatureUpAvg',
+					title: '上机标准温度',
+					sortable: true
+				},{
+					field: 'temperatureUpAct',
+					title: '上机实际温度',
+					sortable: true
+				}, {
+					field: 'temperatureDownAvg',
+					title: '下机标准温度',
+					sortable: true
+				}, {
+					field: 'temperatureDownAct',
+					title: '下机实际温度',
+					sortable: true
+				}, {
+					field: 'orderNum',
+					title: '排序',
+					sortable: true
+				},{
+					field: 'status',
+					title: '状态',
+					align: 'center',
+					formatter: function(value, row, index) {
+						return $.table.selectDictLabel(datas, value);
+					}
+				},
+				{
+					field: 'remark',
+					title: '备注'
+				},
+				{
+					field: 'createTime',
+					title: '创建时间',
+					sortable: true
+				},
+				{
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row, index) {
+						var actions = [];
+						actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.teId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+						actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="remove(\'' + row.teId + '\')"><i class="fa fa-remove"></i>删除</a> ');
+						return actions.join('');
+					}
+				}]
+		};
+		$.table.init(options);
+	}
+
+	function queryLineTree()
+	{
+		var url = ctx + "product/productLine/treeData";
+		var options = {
+			url: url,
+			expandLevel: 2,
+			callback: {
+				beforeClick: true,
+				onClick : zOnClick,
+			}
+
+		};
+		$.tree.init(options);
+
+		function zOnClick(event, treeId, treeNode) {
+			$("#lineId").val(treeNode.id);
+			$("#parentId").val(treeNode.pId);
+			$.table.search();
+			if(treeNode.id != 0){
+				switchTemplate()
+			}
+		}
+	}
+
+	function add(){
+		var lineId = $("#lineId").val()
+		if(lineId == 0){
+			$.modal.alertError("请先选择左侧的产线");
+		}else{
+			$.modal.open("新增温度",ctx + "product/temperature/add/" + lineId);
+		}
+	}
+
+	function switchTemplate(data){
+		var lineId = $("#lineId").val()
+		$('#dataDiv').load(prefix + "/template" , {"lineId":lineId});
+	}
+
+	function  removeAll() {
+		var rows = $.common.isEmpty($.table._option.uniqueId) ? $.table.selectFirstColumns() : $.table.selectColumns($.table._option.uniqueId);
+		if (rows.length == 0) {
+			$.modal.alertWarning("请至少选择一条记录");
+			return;
+		}
+		$.modal.confirm("确认要删除选中的" + rows.length + "条数据吗?", function() {
+			var url = $.table._option.removeUrl;
+			var data = { "ids": rows.join() };
+			$.operate.submit(url, "post", "json", data,function(){
+				var lineId = $("#lineId").val()
+				if(lineId != 0){
+					switchTemplate();
+				}
+			});
+		});
+	}
+
+	function  remove(id) {
+		$.modal.confirm("确定删除该条信息吗？", function() {
+			var url = $.common.isEmpty(id) ? $.table._option.removeUrl : $.table._option.removeUrl.replace("{id}", id);
+			if($.table._option.type == table_type.bootstrapTreeTable) {
+				$.operate.get(url,function(){
+					switchTemplate();
+				});
+			} else {
+				var data = { "ids": id };
+				$.operate.submit(url, "post", "json", data,function(){
+					switchTemplate();
+				});
+			}
+		});
+
+	}
+
+	/* 产线管理 */
+	function productLine() {
+		var url = ctx + "product/productLine";
+		$.modal.openTab("产线管理", url);
+	}
+
+	$('#btnRefresh').click(function() {
+		queryLineTree();
+	});
+
+	$('#btnExpand').click(function() {
+		$._tree.expandAll(true);
+		$(this).hide();
+		$('#btnCollapse').show();
+	});
+
+	$('#btnCollapse').click(function() {
+		$._tree.expandAll(false);
+		$(this).hide();
+		$('#btnExpand').show();
+	});
+
+</script>
+<th:block th:include="include :: layout-latest-js" />
+<th:block th:include="include :: ztree-js" />
+</body>
+</html>

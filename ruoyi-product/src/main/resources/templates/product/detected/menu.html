@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('产品列表')" />
+	<th:block th:include="include :: bootstrap-select-css" />
+	<th:block th:include="include :: ztree-css" />
+	<style>
+		.trg{
+			width: 0;
+			height: 0;
+			border-left: 3px solid transparent;
+			border-right: 3px solid transparent;
+			border-top: 6px solid black;;
+			position: absolute;
+			left:181px;
+			top:8px;
+
+		}
+		.org-select{
+			cursor: default;
+			z-index: -1;
+			width:200px;
+		}
+	</style>
+</head>
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeIn">
+	<div class="row">
+		<div class="col-sm-12 search-collapse">
+			<form id="detected-form">
+				<div class="select-list">
+					<ul>
+						<li class="select-selectpicker">
+							生产产线：
+							<select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择" multiple>
+								<option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+							</select>
+						</li>
+						<li>
+							检测状态：
+							<select name="checkStatus" id="checkStatus" th:with="type=${@dict.getType('product_detected_state')}">
+								<option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}"></option>
+							</select>
+						</li>
+						<li>
+							产品单号：&nbsp;<input type="text" name="productNo" id="productNo">
+						</li>
+						<li>
+							订&nbsp;&nbsp;单&nbsp;号：&nbsp;<input type="text" name="orderNo" id="orderNo">
+						</li>
+						<li>
+							产品编码：&nbsp;<input type="text" name="productCode" id="productCode">
+						</li>
+						<li>
+							产品名称：&nbsp;<input type="text" name="productName" id="productName">
+						</li>
+						<li class="select-time">
+							<label>生产时间： </label>
+							&nbsp;&nbsp;<input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[beginTime]"/>
+							<span>-</span>
+							<input type="text" class="time-input" id="endTime" placeholder="结束时间" name="params[endTime]"/>
+						</li>
+						<li class="select-time">
+							<label>检测时间： </label>
+							&nbsp;&nbsp;<input type="text" class="time-input" id="beginDate" placeholder="开始时间" name="params[beginDate]"/>
+							<span>-</span>
+							<input type="text" class="time-input" id="endDate" placeholder="结束时间" name="params[endDate]"/>
+						</li>
+						<li>
+							<button type="button" class="btn btn-sm btn-info" onclick="search()"><i class="fa fa-search"></i>&nbsp;搜索</button>
+							<a class="btn btn-sm btn-warning" onclick="resetPre()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+							<a class="btn btn-sm btn-success disabled" id="return" shiro:hasPermission="product:detected:return"><i class="fa fa-mail-reply-all"></i> 返检</a>
+							<a class="btn btn-sm btn-primary disabled" id="exportExcel"  shiro:hasPermission="product:detected:export"><i class="fa fa-download"></i> 导出</a>
+						</li>
+					</ul>
+				</div>
+			</form>
+		</div>
+
+		<div class="col-sm-12 select-table table-striped" >
+			<table id="bootstrap-table" data-mobile-responsive="true"></table>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-sm-12 search-collapse">
+			<div class="select-list" id="toolbar2">
+				<li>
+					检测标准：
+				</li>
+				<li style="position: relative;">
+					<input id="checkName" class="org-select" onclick="showTree()" placeholder="请选择检测标准" readonly >
+					<!-- 模拟select点击框 以及option的text值显示-->
+					<!--<i id="fakerBtn" class="trg"style="position: absolute;"></i>-->
+					<!-- 模拟select右侧倒三角 -->
+					<input id="checkId" type="hidden" name="checkId"  value=""/>
+					<!-- 存储 模拟select的value值 -->
+
+					<!-- zTree树状图 相对定位在其下方 -->
+					<div id="treeDiv" class="ztree"  style="display:none;z-index:99;background:white; position: absolute;border:1px solid #4aa5ff; overflow:scroll;width:240px;height:300px;">
+						<ul id="treeDemo"></ul>
+					</div>
+				</li>
+
+				<li shiro:hasPermission="product:detected:add" id="addBtn">
+					<a class="btn btn-sm btn-success"  onclick="add()" >
+						<i class="fa fa-plus"></i> 新增
+					</a>
+				</li>
+				<li shiro:hasPermission="product:detected:checkDetected" id="editBtn">
+					<a class="btn btn-sm btn-primary"  onclick="check()" >
+						<i class="fa fa-edit"></i> 检测完成
+					</a>
+				</li>
+				<li shiro:hasPermission="product:detected:template" id="template">
+					<a class="btn btn-sm btn-warning" onclick="template()">
+						<i class="fa fa-check-square"></i> 设为模板
+					</a>
+				</li>
+			</div>
+			<div class="col-sm-12 select-table table-striped" id="detected">
+				<table id="detectedTable" data-mobile-responsive="true"></table>
+			</div>
+		</div>
+	</div>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-select-js" />
+<th:block th:include="include :: ztree-js" />
+<script th:inline="javascript">
+	var editFlag = [[${@permission.hasPermi('product:detected:edit')}]];
+	var removeFlag = [[${@permission.hasPermi('product:detected:remove')}]];
+	var datas = [[${@dict.getType('sys_product_unit')}]];
+	var statudatas = [[${@dict.getType('product_detected_state')}]];
+	var dataSpce =[[${@dict.getType('product_produce_specs')}]];
+	var productLines = [[${productLines}]];
+	var prefix = ctx + "product/detected";
+	var detectedList = [];
+	var productList = [];
+	var productNo = "";
+	var productId=0;
+	var checkId=0;
+	var index = 0;                              //新增一行表格使用
+
+	//计划单表
+	function clickProduct(){
+		var options = {
+			url: ctx + "product/produce/list",
+			sortName: "productId",
+			sortOrder: "desc",
+			modalName: "任务",
+			uniqueId: "productId",
+			id:"bootstrap-table",
+			showSearch: false,
+			showRefresh: false,
+			showToggle: false,
+			showColumns: false,
+			pageSize: 6,
+			pageList :[6,12],
+			columns: [{
+				radio: true
+			},
+				{
+					field: 'lineId',
+					title: '生产产线',
+					formatter: function(value, row, index) {
+						var actions = [];
+						for(var i=0;i<productLines.length;i++){
+							if(productLines[i].lineId == value){
+								actions.push(productLines[i].lineName)
+							}
+						}
+						return actions.join('');
+					}
+				},
+				{
+					field: 'orderNo',
+					title: '订单号'
+				},
+				{
+					field: 'productName',
+					title: '产品名称'
+				},
+				{
+					field: 'productCode',
+					title: '产品编码'
+				},
+				{
+					field: 'productNo',
+					title: '产品单号'
+				},
+				{
+					field: 'productNum',
+					title: '总数量'
+				},{
+					field: 'productAddNum',
+					title: '已投数量'
+				},{
+					field: 'productUnit',
+					title: '计量单位',
+					formatter: function(value, row, index) {
+						return $.table.selectDictLabel(datas, value);
+					}
+				},{
+					field: 'productSpecs',
+					title: '包装规格',
+					formatter: function(value, row, index) {
+						return $.table.selectDictLabel(dataSpce, value);
+					}
+				},
+				{
+					field: 'checkTime',
+					title: '检测时间',
+					sortable: true
+				},
+				{
+					field: 'startTime',
+					title: '生产时间',
+					sortable: true
+				},
+				{
+					field: 'endTime',
+					title: '交货时间',
+					sortable: true
+				},{
+					field: 'checkStatus',
+					title: '检测状态',
+					align: 'center',
+					formatter: function(value, row, index) {
+						return $.table.selectDictLabel(statudatas, value);
+					}
+				},{
+					field: 'remark',
+					title: '备注'
+				}],
+			pageSize:6,
+			pageList:[6,10,20],
+			clickToSelect: true,
+			onClickRow:function(row,e){
+				productId = row.productId;
+				productNo = row.productNo;
+				$.post(ctx + "product/produce/getChickId",{productId:productId},function(result){
+					if(result.data.checkId == null || result.data.checkId == "null"){
+						checkId =0;
+						$("#checkId").val("0");
+						$("#checkName").val("");
+						$("#checkName").removeAttr("disabled");
+					}else{
+						if(checkStatus == 2){
+							$("#return").removeClass("disabled");
+							$("#checkName").attr("disabled","disabled");
+						}else{
+							$("#checkName").removeAttr("disabled");
+						}
+						checkId = result.data.checkId;
+						$("#checkId").val(checkId);
+						var checkStandardList = [[${checkStandardList}]];
+                        for(var i=0;i<checkStandardList.length;i++){
+                            if(checkStandardList[i].id == checkId){
+                                $("#checkName").val(checkStandardList[i].checkName);
+
+                            }
+                        }
+					}
+					ckeckDete();
+				});
+			},
+			onLoadSuccess: function () {
+				productList = $('#bootstrap-table').bootstrapTable('getData', true);
+			}
+		};
+		$.table.init(options);
+	}
+
+	//检测表
+	function ckeckDete() {
+		$.table.destroy("detectedTable");
+		var options2 = {
+			url: prefix + "/list/"+productId +"/"+ checkId,
+			createUrl: prefix + "/add",
+			updateUrl: prefix + "/edit/{id}",
+			modalName: "检测单",
+			id:"detectedTable",
+			toolbar:"toolbar2",
+			showSearch: false,
+			showRefresh: false,
+			uniqueId: "id",
+			showToggle: false,
+			smartDisplay:false,
+			showColumns: false,
+			pageSize: 50,
+			pageList :[50,100,200,500,1000],
+			columns: [
+				{
+					field: 'check.checkName',
+					title: '行业标准'
+				},
+				{
+					field: 'standardName',
+					title: '检测项目',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+1;
+							obj = row.standardName;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							var uuid = row.uuid;
+							actions.push('<input name="standardName" id="'+id+'" onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"standardName"'+','+idval+','+productId+') value="'+value+'" id="remark">' + '<input name="detectedId" value="' + idval + '" type="hidden">' + '<input name="uuid" value="' + uuid + '" type="hidden">');
+							return actions.join('');
+						}
+					}
+				},
+				{
+					field: 'standardNumber',
+					title: '标准值',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+2;
+							obj = row.standardNumber;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							actions.push('<input  id="'+id+'" name = "standardNumber" onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"standardNumber"'+','+idval+','+productId+') value="'+value+'">');
+							return actions.join('');
+						}
+					}
+				},
+				{
+					field: 'detectedNumber',
+					title: '检测值',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+3;
+							obj = value;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							actions.push('<input  style="background-color:#00CCCC" id="'+id+'" name = "detectedNumber" onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"detectedNumber"'+','+idval+','+productId+') value="'+value+'">');
+							return actions.join('');
+						}
+					}
+				},
+				{
+					field: 'upperNumber',
+					title: '上限',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+4;
+							obj = row.upperNumber;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							actions.push('<input  id="'+id+'" name = "upperNumber" onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"upperNumber"'+','+idval+','+productId+') value="'+value+'" >');
+							return actions.join('');
+						}
+					}
+				},
+				{
+					field: 'lowerNumber',
+					title: '下限',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+5;
+							obj = row.lowerNumber;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							actions.push('<input  id="'+id+'" name = "lowerNumber" onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"lowerNumber"'+','+idval+','+productId+') value="'+value+'">');
+							return actions.join('');
+						}
+					}
+				},
+				{
+					field: 'remark',
+					title: '备注',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return value
+						}else{
+							if($("#checkStatus").val() == 2){
+								return value
+							}
+							var actions = [];
+							var id = "td_"+row.id+6;
+							obj = row.remark;
+							var idval = row.id;
+							if(obj==''){
+								obj="null";
+							}
+							if(value==null||value=="null"){
+								value = "";
+							}
+							actions.push('<input id="'+id+'" name = "remark"  onBlur=editStandard('+'"'+obj+'"'+','+id+','+'"remark"'+','+idval+','+productId+') value="'+value+'">');
+							return actions.join('');
+						}
+					}
+				},{
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row, index) {
+						if(editFlag == "hidden"){
+							return;
+						}else {
+							if ($("#checkStatus").val() == 2) {
+								return;
+							}
+							var actions = [];
+							actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="remove('+row.id+');"><i class="fa fa-remove"></i>删除</a>');
+							return actions.join('');
+						}
+					}
+				}],
+			onLoadSuccess: function () {
+				var data = $('#detectedTable').bootstrapTable('getData', true);
+				detectedList = data;
+			}
+		};
+		$.table.init(options2);
+	}
+	// 初始加载
+	$(function() {
+		clickProduct();
+
+	});
+	// 查询方法
+	function search(){
+
+		$.table.destroy("detectedTable");
+		var data = {};
+		data.lineIds = $.common.join($('#lineIds').selectpicker('val'));
+		checkStatus = $("#checkStatus").val();
+		if(checkStatus == 2){
+			$("#exportExcel").removeClass("disabled");
+			$("#addBtn").attr("style","display:none;");//隐藏div
+			$("#editBtn").attr("style","display:none;");//隐藏div
+		}else{
+			$("#addBtn").attr("style","display:block;");//显示div
+			$("#editBtn").attr("style","display:block;");//显示div
+			$("#exportExcel").addClass("disabled");
+			$("#return").addClass("disabled")
+		}
+		$("#checkId").val("0");
+		$("#checkName").val("");
+		productId=0;
+		checkId = 0;
+		ckeckDete();
+		clickProduct();
+		$.table.search("detected-form", data);
+	}
+
+	function resetPre() {
+		$.form.reset();
+		$("#lineIds").selectpicker('refresh');
+		$.table.destroy("bootstrap-table");
+		clickProduct();
+		$("#checkId").val("0");
+		$("#checkName").val("");
+		productId=0;
+		checkId = 0;
+		ckeckDete();
+	}
+	$("#return").on("click",function(){
+		$.post(ctx + "product/detected/return",{"productId":productId,"checkStatus":1},function(result){
+			$("#return").addClass("disabled");
+			if(result.code == 0 ){
+				$.modal.alertSuccess("返检成功");
+				$("#checkId").val("0");
+				$("#checkName").val("");
+				productId = 0;
+				checkId = 0;
+				search();
+				ckeckDete();
+			}else{
+				$.modal.msgError(result.msg);
+			}
+		})
+	})
+	// 导出表格
+	$("#exportExcel").on("click",function(){
+		if(productList.length == 0){
+			$.modal.msgError("没有数据,无法导出");
+			return;
+		}
+		var idStr = "";
+		for(var i = 0; i < productList.length; i++){
+			idStr += productList[i].productId;
+			if(i != productList.length -1 ){
+				idStr += ","
+			}
+		}
+		$.modal.confirm("确定导出" + productList.length + "条数据吗？", function() {
+			var currentId = "detected-form";
+			$.modal.loading("正在导出数据，请稍后...");
+			$.post(prefix+"/export",{"idStr":idStr},function(result){
+				if (result.code == web_status.SUCCESS) {
+					window.location.href = prefix + "/download?idStr=" + idStr;
+				} else if (result.code == web_status.WARNING) {
+					$.modal.alertWarning(result.msg)
+				} else {
+					$.modal.msgError(result.msg);
+				}
+				$.modal.closeLoading();
+			})
+		});
+	})
+	// 新增检测标准
+	function add() {
+		if(productId == 0){
+			$.modal.msgError("请选择计划单");
+		}
+		if(checkId == 0){
+			$.modal.msgError("请选择检测标准");
+		}
+		else{
+			detectedList.push($("#detectedTable").bootstrapTable('insertRow',{
+				index: 0, // 你想插入到哪，0表示第一行
+				row: {
+					id: index,
+					check: "",
+					standardName: "",
+					standardNumber: "",
+					detectedNumber: "",
+					upperNumber: "",
+					lowerNumber: "",
+					uuid: "",
+					remark: ''
+				}
+			}))
+			index--;
+		}
+	}
+
+	// 删除检测标准
+	function remove(id) {
+		$.modal.confirm("确认要删除选中的数据吗?", function () {
+			$("#detectedTable").bootstrapTable('removeByUniqueId', id);
+			for(var i = 0; i <detectedList.length ;i++){
+				if(detectedList[i].id == id){
+					detectedList.splice(i,1)
+				}
+			}
+		});
+	}
+
+	// 修改检测标准
+	function editStandard(obj,inputid,filed,id,productId,index){
+		var inputValue = $(inputid).val();
+		if(inputValue!=obj && inputValue!=''){
+			for(var i =0;i<detectedList.length - 1;i++){
+				if(detectedList[i].id == id){
+					if(filed == "standardName"){
+						detectedList[i].standardName = inputValue;
+					}
+					if(filed == "standardNumber"){
+						detectedList[i].standardNumber = inputValue;
+					}
+					if(filed == "detectedNumber"){
+						detectedList[i].detectedNumber = inputValue;
+					}
+					if(filed == "upperNumber"){
+						detectedList[i].upperNumber = inputValue;
+					}
+					if(filed == "lowerNumber"){
+						detectedList[i].lowerNumber = inputValue;
+					}
+					if(filed == "remark"){
+						detectedList[i].remark = inputValue;
+					}
+				}
+			}
+		}
+	}
+
+	/*公用ajax,以JSON串传输*/
+	function ajaxJSON(url, data,type) {
+		var result = "";
+		$.ajax({
+			url: url,
+			data: JSON.stringify(data),
+			type: "post",
+			dataType: "json",
+			async: false,
+			contentType: "application/json;charset=utf-8",
+			success: function (obj) {
+				if (obj.code == 0) {
+					$.modal.alertSuccess("保存成功");
+					if(type =="check"){
+						$("#checkId").val("0");
+						$("#checkName").val("");
+						productId = 0;
+						checkId = 0;
+						search();
+						ckeckDete();
+					}
+				} else {
+					$.modal.msgError(obj.msg);
+				}
+			},
+			error: function (obj) {
+				$.modal.msgError("服务器发生未知错误！请联系管理员！");
+			}
+		});
+		return result;
+	}
+	// 保存检测结果
+	function check() {
+		if(productId===0 || checkId===0){
+			$.modal.msgError("请选择计划单以及检测标准");
+			$("#checkId").val("0");
+			$("#checkName").val("")
+			return
+		}
+		var detectedData = [];
+		var standardNameList = $("input[name='standardName']");
+		var standardNumberList = $("input[name='standardNumber']");
+		var detectedNumberList = $("input[name='detectedNumber']");
+		var upperNumberList = $("input[name='upperNumber']");
+		var lowerNumberList = $("input[name='lowerNumber']");
+		var remarkList = $("input[name='remark']");
+		var idList = $("input[name='detectedId']");
+		var uuidList = $("input[name='uuid']");
+		for (var i = 0; i < idList.size(); i++) {
+			var id = idList[i].value;
+			var uuid = uuidList[i].value;
+			var standardName = standardNameList[i].value;
+			var standardNumber = standardNumberList[i].value;
+			var detectedNumber = detectedNumberList[i].value;
+			var upperNumber = upperNumberList[i].value;
+			var lowerNumber = lowerNumberList[i].value;
+			var remark = remarkList[i].value;
+			if(standardName == "" || standardName == null || standardName == 'null'){
+				$.modal.msgError("第"+(i+1)+"行检测项目不能为空或者null！");
+				return;
+			}
+			if(isFinite(upperNumber) && isFinite(lowerNumber)){
+				if(parseFloat(detectedNumber) > parseFloat(upperNumber)){
+					$.modal.msgError("第"+(i+1)+"行检测值不能大于上限值！");
+					return;
+				}
+				if(parseFloat(detectedNumber) < parseFloat(lowerNumber)){
+					$.modal.msgError("第"+(i+1)+"行检测值不能小于下限值！");
+					return;
+				}
+			}
+			for (var j = i + 1; j < idList.size(); j++) {
+				var standardName_j = standardNameList[j].value;
+				if (standardName == standardName_j) {
+					$.modal.msgError(standardName + "检测项目有冲突！");
+					return;
+				}
+			}
+			var param = {
+				id:id,
+				uuid:uuid,
+				standardName:standardName,
+				standardNumber:standardNumber,
+				detectedNumber:detectedNumber,
+				upperNumber:upperNumber,
+				lowerNumber:lowerNumber,
+				remark:remark,
+				productId:productId,
+				checkId:checkId,
+			};
+			detectedData.push(param);
+		}
+		if (detectedData.length == 0) {
+			$.modal.msgError("无数据");
+			return;
+		}else{
+			ajaxJSON(prefix+"/checkDetected", detectedData,"check");
+		}
+	}
+
+	function isNumber(val){
+		var regPos = /^\d+(\.\d+)?$/; //非负浮点数
+		var regNeg = /^(-(([0-9]+\.[0-9]*[1-9][0-9]*)|([0-9]*[1-9][0-9]*\.[0-9]+)|([0-9]*[1-9][0-9]*)))$/; //负浮点数
+		if(regPos.test(val) && regNeg.test(val)){
+			return true;
+		}else{
+			return false;
+		}
+
+	}
+
+	function template(){
+		if(checkId===0){
+			$.modal.msgError("请选择检测标准");
+			$("#checkId").val("0");
+			$("#checkName").val("")
+			return
+		}
+		var detectedData = [];
+		if(editFlag == "hidden" || $("#checkStatus").val() == 2){
+			for(var i in detectedList){
+				var param = {
+					standardName:detectedList[i].standardName,
+					standardNumber:detectedList[i].standardNumber,
+					checkId:checkId,
+				};
+				detectedData.push(param);
+			}
+		}else{
+			var idList = $("input[name='detectedId']");
+			var standardNameList = $("input[name='standardName']");
+			var standardNumberList = $("input[name='standardNumber']");
+			for (var i = 0; i < idList.size(); i++) {
+				var standardName = standardNameList[i].value;
+				var standardNumber = standardNumberList[i].value;
+				if(standardName == "" || standardName == null || standardName == 'null'){
+					$.modal.msgError("第"+(i+1)+"行检测项目不能为空或者null！");
+					return;
+				}
+				for (var j = i + 1; j < idList.size(); j++) {
+					var standardName_j = standardNameList[j].value;
+					if (standardName == standardName_j) {
+						$.modal.msgError(standardName + "检测项目有冲突！");
+						return;
+					}
+				}
+				var param = {
+					standardName:standardName,
+					standardNumber:standardNumber,
+					checkId:checkId,
+				};
+				detectedData.push(param);
+			}
+		}
+		if (detectedData.length == 0) {
+			$.modal.msgError("无数据");
+			return;
+		}else{
+			ajaxJSON(prefix+"/template", detectedData,"template");
+		}
+	}
+	// 加载ztree树
+	var setting = {
+		data: {
+			simpleData: {
+				enable: true
+			}
+		},
+		//回调
+		callback: {
+			onClick: zTreeOnClick
+		},
+		view: {
+			fontCss: { fontSize: "14px" }
+		},
+
+	};
+	//节点点击事件
+	function zTreeOnClick(event, treeId, treeNode) {
+        checkId = treeNode.id;
+        if(checkId==0){
+            $.modal.msgError("请选择标准");
+            ckeckDete();
+        }
+        else if(productId==0){
+            $.modal.msgError("请选择计划单");
+            checkId=0;
+            $("#checkId").val("0");
+        }
+        else{
+            ckeckDete();
+        }
+		$('#checkName').val(treeNode.name);
+		$('#checkId').val(treeNode.id)
+		hideTree();
+	};
+	$(document).ready(function () {
+		//树状图展示
+		var zNodes = eval('[[${ztrees}]]');
+		//初始组织树状图
+		$.fn.zTree.init($("#treeDemo"), setting, zNodes);
+	});
+	//下拉框显示 隐藏
+	function showTree(){
+
+		if($('.ztree').css('display') == 'none'){
+			$('.ztree').css('display','block');
+		} else{
+			$('.ztree').css('display','none');
+		}
+	}
+	function hideTree() {
+		$('.ztree').css('display','none');
+		return false;
+	}
+
+
+	// 第一步：点击任何地方都触发事件
+	$(document).click(function(){
+		hideTree();
+	});
+
+	// 第二步： 将某元素的位置设为不可点击；(此部分点击不会触发点击事件)
+	$("#treeDiv").click(function(){
+		event.stopPropagation();
+	});
+	$("#checkName").click(function(){
+		event.stopPropagation();
+	});
+
+</script>
+</body>
+</html>

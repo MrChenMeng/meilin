@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('工单打印')" />
+</head>
+<body class="gray-bg">
+<div class="container-div">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="code-form">
+                <div class="select-list">
+                    <ul>
+                        <li>
+                            打印状态：<select name="isPrint" id="isPrint">
+                            <option value="1">未打印</option>
+                            <option value="2">已打印</option>
+                        </select>
+                        <li>
+                            扫码状态：<select name="valid" id="valid">
+                            <option value="1">未扫码</option>
+                            <option value="2">已扫码</option>
+                        </select>
+                        </li>
+                        <li class="select-time">
+                            <label>创建时间： </label>
+                            <input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[beginTime]"/>
+                            <span>-</span>
+                            <input type="text" class="time-input" id="endTime" placeholder="结束时间" name="params[endTime]"/>
+                        </li>
+                        <li>
+                            <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
+                            <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                        </li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-sm-12 search-collapse">
+            <div class="select-list btn-group-sm" id="toolbar" role="group">
+                <li shiro:hasPermission="product:code:add">
+                    <a class="btn btn-sm btn-success" onclick="add()" >
+                        <i class="fa fa-plus"></i> 新增
+                    </a>
+                </li>
+                <li shiro:hasPermission="product:code:edit">
+                    <a class="btn btn-sm btn-primary single disabled" onclick="edit()" >
+                        <i class="fa fa-edit"></i> 修改
+                    </a>
+                </li>
+                <li style="margin-right:100px" shiro:hasPermission="product:code:remove">
+                    <a class="btn btn-sm btn-danger multiple disabled" onclick="$.operate.removeAll()" >
+                        <i class="fa fa-remove"></i> 删除
+                    </a>
+                </li>
+
+                <li>
+                    班组：
+                </li>
+                <li>
+                    <input type="text" class="form-control"  id="classNumber">
+                </li>
+                <li>
+                    检验：
+                </li>
+                <li>
+                    <input type="text" class="form-control"  id="jianYan" value="03">
+                </li>
+                <li>
+                    执行标准：
+                </li>
+                <li>
+                    <select name="checkCode" id="checkCode" th:with="type=${@dict.getType('product_execute_standard')}">
+                        <option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictLabel}"></option>
+                    </select>
+                </li>
+                <li>
+                    <a class="btn btn-sm btn-success"  onclick="print()" shiro:hasPermission="product:code:print">
+                        <i class="fa fa-eye"></i> 预览&打印
+                    </a>
+                </li>
+            </div>
+
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table" data-mobile-responsive="true"></table>
+            </div>
+        </div>
+    </div>
+
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    var editFlag = [[${@permission.hasPermi('product:code:edit')}]];
+    var removeFlag = [[${@permission.hasPermi('product:code:remove')}]];
+    var datas = [[${@dict.getType('sys_product_unit')}]];
+    var printDatas =  [[${@dict.getType('product_print_type')}]];
+    var sweepDatas =  [[${@dict.getType('product_sweep_type')}]];
+    var prefix = ctx + "product/code";
+    var productNo = [[${productNo}]]            // 产品单号
+    var id = 0;                                 //二维码id
+    var count = 0;                              //每个二维码重量的总数
+    var codeList = [];                          //二维码集合
+
+    $(function() {
+        var options = {
+            url: prefix + "/list",
+            queryParams: function (params) {
+                return {
+                    productNo: productNo,
+                    isPrint: $("#isPrint").val(),
+                    valid: $("#valid").val(),
+                    pageSize: params.limit,                         // 每页的记录行数（*）
+                    pageNum:  params.offset / params.limit + 1,
+                };
+            },
+            createUrl: prefix + "/add",
+            updateUrl: prefix + "/edit/{id}",
+            removeUrl: prefix + "/remove",
+            sortName: "id",
+            sortOrder: "desc",
+            modalName: "打印工单",
+            uniqueId: "id",
+            clickToSelect: true,
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            columns: [{
+                checkbox: true
+            },
+                {
+                    field: 'print.name',
+                    title: '模板名称'
+                },
+                {
+                    field: 'productNo',
+                    title: '产品单号'
+                },
+                {
+                    field: 'uuid',
+                    title: '二维码'
+                },
+                {
+                    field: 'count',
+                    title: '数量',
+                },
+                {
+                    field: 'weight',
+                    title: '包装重量',
+                    sortable: true
+                },
+                {
+                    field: 'chengZhong',
+                    title: '称重重量',
+                    sortable: true
+                },
+                {
+                    field: 'unit',
+                    title: '计量单位',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(datas, value);
+                    }
+                },
+                {
+                    field: 'isPrint',
+                    title: '打印状态',
+                    formatter: function(value, item, index) {
+                        return $.table.selectDictLabel(printDatas, item.isPrint);
+                    }
+                },
+                {
+                    field: 'valid',
+                    title: '扫码状态',
+                    formatter: function(value, item, index) {
+                        return $.table.selectDictLabel(sweepDatas, item.valid);
+                    }
+                },
+                {
+                    field: 'remark',
+                    title: '备注'
+                },{
+                    title: '操作',
+                    align: 'center',
+                    formatter: function(value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="editCode('+row.id+','+row.count+')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }],
+            onClickRow: function (row, e) {
+                count = row.count;
+                id = row.id;
+            },
+            onLoadSuccess: function () {
+                codeList = $('#bootstrap-table').bootstrapTable('getData', true);
+            }
+        };
+        $.table.init(options);
+    });
+
+
+    function add(){
+      $.modal.open("新增二维码",prefix + "/add/" + productNo);
+    }
+
+    function editCode(id,count){
+        $.modal.open("编辑二维码",prefix + "/edit/" + id + "/" +count);
+    }
+
+    function edit(){
+        $.modal.open("编辑二维码",prefix + "/edit/" + id + "/" +count);
+    }
+
+    function print(){
+        if(codeList.length == 0){
+            $.modal.alertError("没有数据,无法预览打印");
+            return;
+        }
+        var classNumber = $("#classNumber").val();
+        var jianYan = $("#jianYan").val();
+        var checkCode = $("#checkCode").val()
+        if(classNumber == ""){
+            $.modal.alertError("请输入班组");
+            return;
+        }
+        if(jianYan == ""){
+            $.modal.alertError("请输入检验人员");
+            return;
+        }
+
+        var idStr = "";
+        var arrays = $.table.selectColumns("id");
+        if( arrays != null && arrays != ''){
+            idStr = arrays;
+        }else{
+            $.modal.alertError("请选择需要打印的条码");
+            return;
+            for(var i = 0; i < codeList.length; i++){
+                idStr += codeList[i].id;
+                if(i != codeList.length -1 ){
+                    idStr += ","
+                }
+            }
+        }
+        layer.open({
+            type: 2,
+            title: "条码预览打印",
+            offset:'r',
+            maxmin:true,
+            area:['450px','100%'],
+            shadeClose: true,
+            content: ctx + "product/code/print/"+productNo + "?idStr=" + idStr+"&classNumber="+classNumber + "&jianYan="+jianYan+"&checkCode="+checkCode,
+            btn:['打印工单'],
+            yes: function(index, layero){
+            //按钮【按钮一】的回调
+                var body = layer.getChildFrame('body', index);
+                body.find("#print").click();
+            }
+        });
+    }
+
+</script>
+</body>
+</html>

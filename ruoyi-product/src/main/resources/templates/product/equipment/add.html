@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('新增设备')" />
+	<th:block th:include="include :: jasny-bootstrap-css" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-equipment-add">
+		<div class="form-group">
+			<label class="col-sm-2 control-label">ip地址：</label>
+			<div class="col-sm-9">
+				<input class="form-control" data-mask="999.999.999.999" placeholder="请输入IP地址" type="text" name="ipAddress" id="ipAddress" required >
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="col-sm-2 control-label">端口号：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" placeholder="请输入端口号" name="port" id="port" required >
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">所处区域：</label>
+			<div class="col-sm-9">
+				<select name="type" id="type" th:with="type=${@dict.getType('product_equipment_type')}" class="form-control m-b" data-none-selected-text="请选择"  >
+					<option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}"></option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">设备名称：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="name" id="name" required >
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="col-sm-2 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control"></textarea>
+			</div>
+		</div>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: jasny-bootstrap-js" />
+<script th:inline="javascript">
+	var prefix = ctx + "product/equipment";
+
+	$("#form-equipment-add").validate({
+		onkeyup: false,
+		rules:{
+			ipAddress: {
+				remote: {
+					url: prefix + "/check",
+					type: "post",
+					dataType: "json",
+					data: {
+						ipAddress: function () {
+							return $.common.trim($("#ipAddress").val());
+						}
+					},
+					dataFilter: function (data, type) {
+						return $.validate.unique(data);
+					}
+				}
+			},
+			port:{
+				digits:true
+			}
+		},
+		messages: {
+			"ipAddress": {
+				remote: "该产线编码已经存在"
+			}
+		},
+		focusCleanup: true
+	});
+
+	function submitHandler() {
+		if ($.validate.form()) {
+			$.operate.save(prefix + "/add", $('#form-equipment-add').serialize());
+		}
+	}
+</script>
+</body>
+</html>

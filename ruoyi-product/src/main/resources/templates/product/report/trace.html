@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('追溯表')" />
+    <th:block th:include="include :: bootstrap-select-css"/>
+</head>
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="capacity-form">
+                <div class="select-list">
+                    <ul>
+                        <li class="select-selectpicker">
+                            生产产线：
+                            <select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择" multiple>
+                                <option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+                            </select>
+                        </li>
+                        <li>
+                            产品名称：<input type="text" id="productName" name="productName"/>
+                        </li>
+                        <li class="select-time">
+                            <label>查询时间： </label>
+                            &nbsp;&nbsp;<input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[startTime]" th:value="${nowTime}"/>
+                            <span>-</span>
+                                <input type="text" class="time-input" id="endTime" placeholder="结束时间" name="params[endTime]" th:value="${nowTime}"/>
+                        </li>
+                        <li>
+                            <button type="button" class="btn btn-primary btn-rounded btn-sm" onclick="search()"><i class="fa fa-search"></i>&nbsp;搜索</button>
+                            <button type="button" class="btn btn-warning btn-rounded btn-sm" onclick="reset()"><i class="fa fa-refresh"></i>&nbsp;重置</button>
+                        </li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="bootstrap-table" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-bar-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-select-js"/>
+<script th:src="@{/ajax/libs/report/echarts/echarts.min.js}"></script>
+<script th:inline="javascript">
+
+
+    // 基于准备好的dom，初始化echarts实例
+    var day = echarts.init(document.getElementById('echarts-bar-chart'));
+    // 指定图表的配置项和数据
+    var day_options = {
+        title: {
+            text: '日报表',
+            // subtext: '单位：条'
+        },
+        tooltip: {
+            trigger: 'axis'
+        },
+        toolbox: {
+            show: true,
+            feature: {
+                dataZoom: {
+                    yAxisIndex: 'none'
+                },
+                dataView: {readOnly: false},
+                magicType: {type: ['line', 'bar']},
+                restore: {},
+                saveAsImage: {}
+            }
+        },
+        xAxis:  {
+            type: 'category',
+            boundaryGap: false,
+            data: ['2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1','2017-11-1']
+        },
+        yAxis: {
+            type: 'value'
+        },
+        series: [
+            {
+                name:'日报表',
+                type:'line',
+                data:[10,20, 15, 5, 8, 7, 9, 12, 0, 20],
+                markPoint: {
+                    data: [
+                        {
+                            type: 'max', name: '最大值'
+                        },
+                        {
+                            type: 'min', name: '最小值'
+                        }
+                    ]
+                }
+            },
+
+        ]
+    };
+    day.setOption(day_options);
+</script>
+</body>
+</html>

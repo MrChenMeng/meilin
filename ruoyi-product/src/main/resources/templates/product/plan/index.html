@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('生产计划列表')" />
+</head>
+<body class="gray-bg">
+<div class="container-div">
+	<div class="row">
+
+		<div class="btn-group-sm" id="toolbar" role="group">
+			<a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="product:plan:addPlan">
+				<i class="fa fa-plus"></i> 新增
+			</a>
+			<a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="product:plan:edit">
+				<i class="fa fa-edit"></i> 修改
+			</a>
+			<a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="product:plan:remove">
+				<i class="fa fa-remove"></i> 删除
+			</a>
+		</div>
+
+		<div class="col-sm-12 select-table table-striped">
+			<table id="bootstrap-table" data-mobile-responsive="true"></table>
+		</div>
+	</div>
+
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var editFlag = [[${@permission.hasPermi('product:plan:edit')}]];
+	var removeFlag = [[${@permission.hasPermi('product:plan:remove')}]];
+	var prefix = ctx + "product/plan";
+
+
+	$(function() {
+		var options = {
+			url: prefix + "/list",
+			createUrl: prefix + "/add",
+			updateUrl: prefix + "/edit/{id}",
+			removeUrl: prefix + "/remove",
+			sortName: "planId",
+			sortOrder: "desc",
+			modalName: "产品",
+			uniqueId: "planId",
+			clickToSelect: true,
+			columns: [{
+				checkbox: true
+			},
+				{
+					field: 'planName',
+					title: '产品名称',
+					sortable: true
+				},
+				{
+					field: 'remark',
+					title: '备注'
+				},
+				{
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row, index) {
+						var actions = [];
+						actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.planId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+						actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.planId + '\')"><i class="fa fa-remove"></i>删除</a>');
+						return actions.join('');
+					}
+				}]
+		};
+		$.table.init(options);
+	});
+
+
+</script>
+</body>
+</html>

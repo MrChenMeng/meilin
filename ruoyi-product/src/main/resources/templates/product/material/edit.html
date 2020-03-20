@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('修改')" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-material-edit" th:object="${material}">
+		<input id="mid" name="mid"  type="hidden" th:field="*{mid}" />
+		<input type="hidden" name="procedureId" th:value="${material.procedureId}">
+		<div class="form-group">
+			<label class="col-sm-2 control-label">物料类型：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" th:value="${@dict.getLabel('product_material_type',{material.type})}" readonly >
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">配方名称：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" th:value="${material.procedure.name}" readonly >
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">物料名称：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="name" id="name" required  th:field="*{name}">
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">物料用量：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="dosage" id="dosage" required th:field="*{dosage}" onkeyup="this.value= this.value.match(/\d+(\.\d{0,2})?/) ? this.value.match(/\d+(\.\d{0,2})?/)[0] : ''">
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">误差值：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="drift" id="drift" required th:field="*{drift}" onkeyup="this.value= this.value.match(/\d+(\.\d{0,2})?/) ? this.value.match(/\d+(\.\d{0,2})?/)[0] : ''">
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">计量单位：</label>
+			<div class="col-sm-9">
+				<select name="unit" id="unit" th:with="type=${@dict.getType('sys_product_unit')}" class="form-control m-b" data-none-selected-text="请选择"  >
+					<option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}" th:selected="${dict.dictValue == material.unit}" onkeyup="this.value= this.value.match(/\d+(\.\d{0,2})?/) ? this.value.match(/\d+(\.\d{0,2})?/)[0] : ''"></option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">供应商：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="support" id="support"   th:field="*{support}">
+			</div>
+		</div>
+
+
+		<div class="form-group">
+			<label class="col-sm-2 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control" th:field="*{remark}"></textarea>
+			</div>
+		</div>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+	var prefix = ctx + "product/material";
+
+
+	$("#form-material-edit").validate({
+		rules:{
+            name:{
+                required:true,
+                remote: {
+                    url: prefix + "/checkName",
+                    type: "post",
+                    dataType: "json",
+                    data: {
+                        name : function() {
+                            //空格截取
+                            return $.common.trim($("#name").val());
+                        },
+                        procedureId:function () {
+                            //空格截取
+                            return $.common.trim($("input[name='procedureId']").val())
+                        }
+                    },
+                    dataFilter: function(data, type) {
+                        return $.validate.unique(data);
+                    }
+                }
+            },
+			dosage:{
+				required:true
+			},
+			dosage:{
+				number:true
+			},
+			drift:{
+				number:true
+			}
+		},
+        messages: {
+            "name": {
+                remote: "该物料名称已经存在"
+            }
+        },
+		focusCleanup: true
+	});
+
+	function submitHandler() {
+		if ($.validate.form()) {
+			$.operate.save(prefix + "/edit", $('#form-material-edit').serialize(),function () {
+			/*	parent.$("#editMater").addClass("disabled");
+				parent.$("#removeMater").addClass("disabled");
+				parent.clickmater();*/
+			});
+		}
+	}
+</script>
+</body>
+</html>

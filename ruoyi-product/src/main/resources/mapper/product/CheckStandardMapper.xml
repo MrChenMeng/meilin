@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.CheckStandardMapper">
+  <resultMap id="CheckStandardResult" type="com.ruoyi.product.domain.CheckStandard">
+    <id     property="id"                 column="id" />
+    <result property="parentId"           column="parent_id" />
+    <result property="ancestors"          column="ancestors"   />
+    <result property="parentName"         column="parent_name" />
+    <result property="checkName"          column="check_name" />
+    <result property="checkCode"          column="check_code" />
+    <result property="orderNum"           column="order_num" />
+    <result property="createTime"         column="create_time" />
+    <result property="updateTime"         column="update_time" />
+    <result property="dataState"         column="data_state" />
+    <result property="remark"             column="remark" />
+  </resultMap>
+
+  <sql id="selectCheckVo">
+        select c.id, c.parent_id,c.parent_name ,c.check_name,c.check_code,c.order_num,c.ancestors, c.remark, c.create_time,c.data_state
+        from ml_check_standard c
+    </sql>
+
+  <select id="selectCheckList" parameterType="CheckStandard" resultMap="CheckStandardResult">
+    <include refid="selectCheckVo"/>
+    where c.data_state=1
+    <if test="parentId != null  and parentId != ''and parentId != 0">
+      AND c.parent_id = #{parentId}
+    </if>
+    <if test="checkName != null and checkName != ''">
+      AND c.check_name like concat('%', #{checkName}, '%')
+    </if>
+    <if test="checkCode != null  and checkCode != ''">
+      AND c.check_code = #{checkCode}
+    </if>
+    <!-- 数据范围过滤 -->
+    ${params.dataScope}
+    order by c.parent_id, c.order_num
+  </select>
+
+  <select id="checkCheckNameUnique" resultMap="CheckStandardResult">
+    <include refid="selectCheckVo"/>
+    where c.data_state=1 and c.check_name=#{checkName}
+     <if test="parentId != null and parentId != ''">
+        and c.parent_id = #{parentId}
+     </if>
+  </select>
+
+  <select id="selectCheckById" parameterType="Long" resultMap="CheckStandardResult">
+		select c.id, c.parent_id,c.check_name,c.check_code,c.ancestors,c.order_num,  c.remark, c.create_time,
+			(select check_name from ml_check_standard where id = c.parent_id) parent_name
+		from ml_check_standard c
+		where c.id = #{id}
+	</select>
+
+  <insert id="insertCheckStandard" parameterType="CheckStandard">
+    insert into ml_check_standard(
+    <if test="id != null and id != 0">id,</if>
+    <if test="parentId != null and parentId != 0">parent_id,</if>
+    <if test="checkName != null and checkName != ''">check_name,</if>
+    <if test="checkCode != null and checkCode != ''">check_code,</if>
+    <if test="ancestors != null and ancestors != ''">ancestors,</if>
+    <if test="orderNum != null and orderNum != ''">order_num,</if>
+    <if test="dataState != null and dataState != ''">data_state,</if>
+    <if test="createBy != null and createBy != ''">create_by,</if>
+    create_time
+    )values(
+    <if test="id != null and id != 0">#{id},</if>
+    <if test="parentId != null and parentId != 0">#{parentId},</if>
+    <if test="checkName != null and checkName != ''">#{checkName},</if>
+    <if test="checkCode != null and checkCode != ''">#{checkCode},</if>
+    <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+    <if test="orderNum != null and orderNum != ''">#{orderNum},</if>
+    <if test="dataState != null and dataState != ''">#{dataState},</if>
+    <if test="createBy != null and createBy != ''">#{createBy},</if>
+    sysdate()
+    )
+  </insert>
+
+  <select id="selectChildrenCheckById" parameterType="Long" resultMap="CheckStandardResult">
+		select * from ml_check_standard where data_state = 1 and find_in_set(#{id}, ancestors)
+	</select>
+
+  <update id="updateCheckChildren" parameterType="java.util.List">
+    update ml_check_standard set ancestors =
+    <foreach collection="checks" item="item" index="index"
+             separator=" " open="case id" close="end">
+      when #{item.id} then #{item.ancestors}
+    </foreach>
+    where id in
+    <foreach collection="checks" item="item" index="index"
+             separator="," open="(" close=")">
+      #{item.id}
+    </foreach>
+  </update>
+
+  <update id="updateCheckStandard" parameterType="CheckStandard">
+    update ml_check_standard
+    <set>
+      <if test="parentId != null and parentId != 0">parent_id = #{parentId},</if>
+      <if test="checkName != null and checkName != ''">check_name = #{checkName},</if>
+      <if test="checkCode != null and checkCode != ''">check_code=#{checkCode},</if>
+      <if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+      <if test="orderNum != null and orderNum != ''">order_num = #{orderNum},</if>
+      <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+      update_time = sysdate()
+    </set>
+    where id = #{id}
+  </update>
+
+  <select id="selectCheckCount" parameterType="CheckStandard" resultType="int">
+    select count(1) from ml_check_standard
+    where data_state = 1
+    <if test="id != null and id != 0"> and id = #{id} </if>
+    <if test="parentId != null and parentId != 0"> and parent_id = #{parentId} </if>
+  </select>
+
+  <delete id="deleteCheckById" parameterType="Long">
+		 update ml_check_standard set data_state = 2 where id = #{id}
+	</delete>
+
+</mapper>

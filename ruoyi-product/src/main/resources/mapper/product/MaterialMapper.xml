@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.MaterialMapper">
+
+    <resultMap id="MaterialResult" type="Material">
+        <id property="mid" column="mid"/>
+        <result property="name" column="name"/>
+        <result property="unit" column="unit"/>
+        <result property="uuid" column="uuid"/>
+        <result property="type" column="type"/>
+        <result property="procedureId" column="procedure_id"/>
+        <result property="datastate" column="datastate"/>
+        <result property="support" column="support"/>
+        <result property="dosage" column="dosage"/>
+        <result property="remark" column="remark"/>
+        <result property="drift" column="drift"/>
+        <result property="count" column="count"/>
+        <result property="flag" column="flag"/>
+        <result property="materialState" column="material_state"/>
+        <result property="productId" column="product_id"/>
+        <result property="productNo" column="product_no"/>
+        <result property="weightUnit" column="weight_unit"/>
+        <result property="dosageActual" column="dosage_actual"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="sort" column="sort"/>
+        <result property="major" column="major"/>
+        <association property="procedure" column="procedure_id" javaType="Procedure" resultMap="procedureResult"/>
+    </resultMap>
+
+    <resultMap type="Procedure" id="procedureResult">
+        <id property="id" column="id"/>
+        <result property="name" column="pName"/>
+    </resultMap>
+
+
+    <sql id="selectMaterialVo">
+        select m.mid,m.name,m.unit,m.datastate,m.support,m.remark,m.dosage,m.uuid,m.flag,m.product_id,m.product_no,m.procedure_id,m.dosage_actual,m.count,m.drift,m.material_state,m.type,m.update_time,
+        m.sort as sort , m.major as major,  p.name as pName
+		from ml_material m
+		LEFT JOIN ml_procedure p ON m.procedure_id = p.id
+    </sql>
+
+    <select id="selectMaterialById" parameterType="Long" resultMap="MaterialResult">
+        <include refid="selectMaterialVo"/>
+        where m.mid = #{mid}
+    </select>
+
+    <select id="selectMaterialByProductUUid" parameterType="Material" resultMap="MaterialResult">
+        <include refid="selectMaterialVo"/>
+        where m.uuid = #{uuid}
+        and m.datastate = 1
+        and m.product_id = #{productId}
+        and m.count = 0
+    </select>
+
+
+    <select id="selectMaterial" parameterType="Material" resultMap="MaterialResult">
+        <include refid="selectMaterialVo"/>
+        where m.datastate = 1 and m.count = 0
+        <if test="name != null and name!=''">
+            and m.name = #{name}
+        </if>
+        <if test="support != null and support!=''">
+            and m.support = #{support}
+        </if>
+        <if test="productId != null">
+            and m.product_id = #{productId}
+        </if>
+        <if test="productId == null ">
+            and m.product_id is null
+        </if>
+        <if test="procedureId != null and  procedureId !=0">
+            and m.procedure_id =#{procedureId}
+        </if>
+        <if test="type != null and  type !=0">
+            and m.type =#{type}
+        </if>
+        <if test="dosageActual != null">
+            and m.dosage_actual =#{dosageActual}
+        </if>
+        order by m.sort asc
+    </select>
+
+
+    <!--
+    <select id="selectMaterialListProductIdIsNull" parameterType="Material" resultMap="MaterialResult">
+        <include refid="selectMaterialVo"/>
+        where m.datastate = 1
+        <if test="name != null and name!=''">
+            and  m.name = #{name}
+        </if>
+        <if test="support != null and support!=''">
+            and m.support = #{support}
+        </if>
+        AND m.product_id is null
+    </select>
+    -->
+
+    <delete id="removeMaterialByIds" parameterType="Long">
+        update ml_material set datastate = 2 where mid in
+        <foreach collection="array" item="mid" open="(" separator="," close=")">
+            #{mid}
+        </foreach>
+    </delete>
+
+    <delete id="removeMaterialwhenUpdate" parameterType="Material">
+        update  ml_material set datastate = 2  where  product_id= #{productId} and type = #{type} and count > 0
+    </delete>
+
+    <delete id="removeMaterialByMid" parameterType="Long">
+        update  ml_material set datastate = 2  where mid = #{mid} and count = 0
+  </delete>
+
+    <insert id="insertMaterial" parameterType="Material" keyProperty="mid">
+        insert into ml_material (
+        <if test="name != null and name != ''">name,</if>
+        <if test="unit != null and unit != ''">unit,</if>
+        <if test="uuid != null and uuid != ''">uuid,</if>
+        <if test="type != null and type != ''">type,</if>
+        <if test="support != null and support != ''">support,</if>
+        <if test="productId != null and productId != ''">product_id,</if>
+        <if test="productNo != null and productNo != ''">product_no,</if>
+        <if test="remark != null and remark != ''">remark,</if>
+        <if test="dosage != null and dosage != ''">dosage,</if>
+        <if test="count != null ">count,</if>
+        <if test="flag != null ">flag,</if>
+        <if test="materialState != null">material_state,</if>
+        <if test="procedureId != null and procedureId != ''">procedure_id,</if>
+        <if test="dosageActual != null">dosage_actual,</if>
+        <if test="drift != null ">drift,</if>
+        <if test="updateTime != null">update_time,</if>
+        <if test="sort != null">sort,</if>
+        <if test="major != null">major,</if>
+        create_time,
+        datastate
+        )values(
+        <if test="name != null and name != ''">#{name},</if>
+        <if test="unit != null and unit != ''">#{unit},</if>
+        <if test="uuid != null and uuid != ''">#{uuid},</if>
+        <if test="type != null and type != ''">#{type},</if>
+        <if test="support != null and support != ''">#{support},</if>
+        <if test="productId != null and productId != ''">#{productId},</if>
+        <if test="productNo != null and productNo != ''">#{productNo},</if>
+        <if test="remark != null and remark != ''">#{remark},</if>
+        <if test="dosage != null and dosage != ''">#{dosage},</if>
+        <if test="count != null">#{count},</if>
+        <if test="flag != null">#{flag},</if>
+        <if test="materialState != null ">#{materialState},</if>
+        <if test="procedureId != null and procedureId != ''">#{procedureId},</if>
+        <if test="dosageActual != null">#{dosageActual},</if>
+        <if test="drift != null">#{drift},</if>
+        <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP },</if>
+        <if test="sort != null">#{sort},</if>
+        <if test="major != null">#{major},</if>
+        sysdate(),
+        1
+        )
+    </insert>
+
+
+    <insert id="insertMatList">
+        insert into ml_material (
+        name,
+        unit,
+        uuid,
+        type,
+        support,
+        product_id,
+        product_no,
+        remark,
+        dosage,
+        count,
+        flag,
+        material_state,
+        procedure_id,
+        dosage_actual,
+        drift,
+        sort,
+        major,
+        create_time,
+        datastate
+        )values
+        <foreach collection="listMaterial" separator="," item="t">
+            (
+            #{t.name},
+            #{t.unit},
+            #{uuid},
+            #{t.type},
+            #{t.support},
+            #{productId},
+            #{comment_code},
+            #{t.remark},
+            #{t.dosage},
+            #{t.count},
+            #{t.flag},
+            #{t.materialState},
+            #{t.procedureId},
+            #{t.dosageActual},
+            #{t.drift},
+            #{t.sort},
+            #{t.major},
+            sysdate(),
+            1
+            )
+        </foreach>
+    </insert>
+
+
+    <update id="updateMaterial" parameterType="Material">
+        update ml_material
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="unit != null and unit != ''">unit = #{unit},</if>
+            <if test="uuid != null and uuid != ''">uuid = #{uuid},</if>
+            <if test="type != null and type != ''">type = #{type},</if>
+            <if test="datastate != null and datastate != ''">datastate = #{datastate},</if>
+            <if test="support != null and support != ''">support = #{support},</if>
+            <if test="remark != null and remark != ''">remark = #{remark},</if>
+            <if test="remark == null or remark == ''">remark = null,</if>
+            <if test="dosage != null ">dosage = #{dosage},</if>
+            <if test="procedureId != null and procedureId != ''">procedure_id = #{procedureId},</if>
+            <if test="dosageActual != null">dosage_actual = #{dosageActual},</if>
+            <if test="drift != null ">drift = #{drift},</if>
+            <if test="count != null ">count = #{count},</if>
+            <if test="materialState != null ">material_state = #{materialState},</if>
+            <if test="sort != null ">sort = #{sort},</if>
+            <if test="major != null ">major = #{major},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType = TIMESTAMP },</if>
+            <if test="updateTime == null">update_time = sysdate(),</if>
+        </set>
+        where datastate = 1
+        <if test="mid != null and mid !=''">
+            and mid = #{mid}
+        </if>
+        <if test="uuid != null and  uuid != ''">
+            and uuid = #{uuid} and product_id is not null
+        </if>
+    </update>
+
+
+    <update id="updateMobileMaterial" parameterType="Material">
+        update ml_material
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="unit != null and unit != ''">unit = #{unit},</if>
+            <if test="uuid != null and uuid != ''">uuid = #{uuid},</if>
+            <if test="type != null and type != ''">type = #{type},</if>
+            <if test="datastate != null and datastate != ''">datastate = #{datastate},</if>
+            <if test="support != null and support != ''">support = #{support},</if>
+            <if test="remark != null and remark != ''">remark = #{remark},</if>
+            <if test="dosage != null and dosage != ''">dosage = #{dosage},</if>
+            <if test="procedureId != null and procedureId != ''">procedure_id = #{procedureId},</if>
+            <if test="dosageActual != null">dosage_actual = #{dosageActual},</if>
+            <if test="drift != null ">drift = #{drift},</if>
+            <if test="count != null ">count = #{count},</if>
+            <if test="flag != null ">flag = #{flag},</if>
+            <if test="materialState != null ">material_state = #{materialState},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType = TIMESTAMP },</if>
+            <if test="sort != null ">sort = #{sort},</if>
+            <if test="major != null ">major = #{major},</if>
+            <if test="updateTime == null">update_time = sysdate(),</if>
+        </set>
+        where datastate = 1
+        <if test="mid != null and mid !=''">
+            and mid = #{mid}
+        </if>
+        <if test="uuid != null and  uuid != ''">
+            and uuid = #{uuid} and product_id is not null
+        </if>
+        <if test="productId != null">
+            and product_id = #{productId}
+        </if>
+        and count != 0
+    </update>
+
+    <update id="updateDrift" parameterType="Material">
+         update ml_material set drift = #{drift}
+         where uuid = #{uuid} AND type = #{type}
+         and count = (SELECT count from material_count where product_id=#{productId} and type = #{type})
+    </update>
+
+    <update id="deleteByProductId" parameterType="Long">
+        update ml_material set datastate = 2 where product_id = #{productId}
+    </update>
+
+
+    <select id="producrCount" parameterType="Material" resultType="Integer">
+        select max(count)
+        FROM ml_material
+        WHERE product_id = #{productId} and datastate = 1
+        GROUP BY product_id
+    </select>
+
+    <select id="mobileSelectMaterials" parameterType="Material" resultMap="MaterialResult">
+        select mid,product_no,update_time,count
+        from ml_material
+        where datastate = 1
+        and count = 0
+        and product_id = #{productId}
+        and type = #{type}
+        AND update_time = #{updateTime}
+    </select>
+
+    <select id="maxCount" parameterType="Material" resultType="Integer">
+        select count
+        from material_count
+        where type = #{type}
+        and product_id = #{productId}
+    </select>
+
+    <select id="mobileMaterial" parameterType="Material" resultMap="MaterialResult" >
+         select m.product_no,m.name,m.unit,m.support,m.remark,m.dosage,m.uuid,m.product_id,m.drift,m.count,m.type,m.update_time,m.procedure_id,m.dosage_actual,m.flag,m.major,
+        d.dict_label as weight_unit
+        from ml_material m
+        LEFT JOIN sys_dict_data d ON m.unit = d.dict_value
+        where m.datastate = 1 and d.dict_type = "sys_product_unit"
+        and m.type = #{type}
+        and m.product_id = #{productId}
+        and count = (SELECT MAX(count) from ml_material where datastate = 1 and product_id =#{productId} AND type = #{type})
+        order by m.sort asc
+    </select>
+
+
+    <!--检查物料名称-->
+    <select id="checkName" resultType="Material">
+        <include refid="selectMaterialVo"/>
+        where m.datastate = 1
+        and product_id is null
+        <if test="name !=null">
+            AND m.name=#{name }
+        </if>
+        <if test="procedureId !=null">
+            and m.procedure_id=#{procedureId}
+        </if>
+    </select>
+
+    <select id="selectByProductNameAndType" parameterType="Material" resultMap="MaterialResult">
+       SELECT
+           	procedure_id,
+            NAME,
+            unit,
+            support,
+            remark,
+            dosage,
+            dosage_actual,
+            drift,
+            material_state,
+            type,
+            flag
+        FROM
+            ml_material
+        WHERE
+            update_time = (
+                SELECT
+                    max(update_time)
+                FROM
+                    ml_material
+                WHERE
+                    product_id IN (
+                        SELECT
+                            product_id
+                        FROM
+                            ml_product
+                        WHERE
+                            product_name =#{productName}
+                        AND datastate = 1
+                        AND count = 0
+                        AND type = #{type}
+                    )
+            )
+        AND product_id IN (
+            SELECT
+                product_id
+            FROM
+                ml_product
+            WHERE
+                product_name = #{productName}
+        )
+        and count = 0
+        and datastate = 1
+    </select>
+
+
+    <update id="updatesign" parameterType="com.ruoyi.product.domain.Material">
+        update ml_material set major = #{major}
+         where  mid = #{mid}
+    </update>
+
+    <update id="updateMajor" parameterType="com.ruoyi.product.domain.Material">
+        update ml_material set major = #{major},
+        sort = #{sort}
+         where  uuid = #{uuid}
+         and count > 0
+         and datastate = 1
+    </update>
+
+
+</mapper>

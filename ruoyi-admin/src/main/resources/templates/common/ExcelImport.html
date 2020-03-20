@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('数据表格导入')" />
+    <th:block th:include="include :: layui-css" />
+    <style type="text/css">
+        tr {
+            line-height: 24px;
+            border-bottom: 1px solid #F8F8F8;
+        }
+        .layui-upload-choose {
+            padding: 5px 10px;
+            color: red;
+        }
+        .indusfo-table{
+            width: 70px;
+            border-top:#cccccc solid 1px;
+            border-bottom:#cccccc solid 1px;
+            border-left:#cccccc solid 1px;
+            border-right:#cccccc solid 1px;
+        }
+        .layui-form-label {
+            float: left;
+            display: block;
+            width: 150px;
+            font-weight: 400;
+            line-height: 20px;
+            text-align: right;
+            padding: 9px 15px;
+        }
+    </style>
+</head>
+<body class="gray-bg">
+
+<form id="form1" class="layui-form">
+    <div class="layui-form-item" style="margin-bottom: 0px; border-bottom: 1px solid #F8F8F8;background-color: #F8F8F8;">
+        <div class="layui-inline" style="float: left;">
+            <label class="layui-form-label">Excel模板:</label>
+            <div class="layui-input-inline">
+                <a class="layui-form-label layui-btn-xs" style="color: #01AAED;" th:href="@{'../../../download/'+${model}+'.xls'}">下载模板.xls</a>
+            </div>
+        </div>
+        <div class="layui-inline" style="float: left;">
+            <label class="layui-form-label">错误处理</label>
+            <div class="layui-input-inline" >
+                <input name="way" value="false" lay-filter="way" title="中止" checked="" type="radio">
+                <input name="way" value="true" lay-filter="way" title="跳过" type="radio">
+            </div>
+        </div>
+  <!--
+    <div class="layui-inline" style="float: left;">
+        <label class="layui-form-label">错误处理</label>
+        <div class="layui-input-inline" >
+            <div class="radio-box">
+                <label>中止</label>
+                <input type="radio"  name="way" value="false" checked>
+            </div>
+            <div class="radio-box">
+                <label>跳过</label>
+                <input type="radio"  name="way" value="true">
+            </div>
+        </div>
+    </div>
+ -->
+    </div>
+    <div class="layui-form-item" style="margin-bottom: 0px; border-bottom: 1px solid #F8F8F8;margin-top: 5px;margin-bottom: 5px;">
+        <button type="button" class="layui-btn layui-btn-normal layui-btn-sm" id="test1" style="float: left;margin-left: 4%;margin-bottom: 5px;">选择文件</button>
+        <button type="button" class="layui-btn layui-btn-sm" id="test2" style="float: left;margin-bottom: 5px;margin-left: 5px;">开始上传</button>
+    </div>
+    <div id="ImportGrid" style="margin-top: 5px;">
+        <table id="Error_Head" class="grid" style="width: 100%">
+            <thead>
+            <tr style="background-color: #f2f2f2;">
+                <td class="indusfo-table" style="border-left: none; text-align: center; ">
+                    <div class="table-header">行号</div>
+                </td>
+                <td class="indusfo-table" style="border-left: none; text-align: center; ">
+                    <div class="table-header">列号</div>
+                </td>
+                <td class="indusfo-table" style="border-left: none; text-align: center; ">
+                    <div class="table-header">原因</div>
+                </td>
+            </tr>
+            </thead>
+            <tbody id="Error_Detail">
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    layui.config({
+    }).use([ 'upload','form', 'jquery' ], function() {
+        var form = layui.form ,upload = layui.upload ,$ = layui.jquery;
+        var index = parent.layer.getFrameIndex(window.name); //当前iframe层的索引
+        upload.render({
+            elem : '#test1',
+            url : ctx +[[${url}]]+ '/json/'+ [[${act}]],
+            method:'post',
+            exts: 'xls|xlsx|XLS|XLSX',
+            auto : false,
+            bindAction : '#test2',
+            data:{way:function(){
+                    return $('input[name=way]:checked').val();
+                }},
+            before: function(obj){
+                $("#Error_Detail").html("");
+                layer.load();
+            },
+            done : function(res) {
+                setTimeout(function(){
+                    layer.closeAll('loading');
+                    if (res.code == 1) {
+                        $.modal.msgSuccess("导入成功");
+                        parent.layer.close(index); //再执行关闭
+                        window.parent.location.reload();//刷新父页面
+                    } else {
+                        var errorData = JSON.parse(res.data);
+                        if(errorData.length>0){
+                            $.each(errorData, function (i) {
+                                CreateRow(errorData[i].rowId, errorData[i].cellId, errorData[i].reason);
+                            });
+                            $.modal.msgError(res.msg);
+                        }else{
+                            $.modal.msgError(res.msg);
+                        }
+                    }
+                }, 1000);
+            },
+            error:function(index,upload){
+
+            }
+        });
+
+        function CreateRow(rowid, cellId, reason) {
+            var tr = '<tr style="color: red;">';
+            tr += '<td style="width: 70px;text-align: center;">' + rowid + '</td>'
+            tr += '<td style="width: 70px;">' + cellId + '</td>'
+            tr += '<td style="width: 300px;">' + reason + '</td>'
+            tr += '</tr>';
+            $(tr).appendTo("#Error_Detail");
+        }
+        form.render()
+    })
+
+</script>
+</body>
+</html>

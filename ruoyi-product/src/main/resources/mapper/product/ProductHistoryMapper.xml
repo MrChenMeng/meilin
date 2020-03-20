@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.product.mapper.ProductHistoryMapper">
+  <resultMap id="BaseResultMap" type="com.ruoyi.product.domain.ProductHistory">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="update_time" jdbcType="VARCHAR" property="updateTime" />
+    <result column="update_by" jdbcType="VARCHAR" property="updateBy" />
+    <result column="remark" jdbcType="VARCHAR" property="remark" />
+    <result column="product_no" jdbcType="VARCHAR" property="productNo" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    id, update_time, update_by,remark,product_no
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from ml_product_history
+    where id = #{id,jdbcType=BIGINT}
+  </select>
+  <select id="selectByProductId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select
+    a.id, a.update_time, b.user_name as createBy, c.user_name as update_by, d.create_time as createTime, a.remark, a.product_no
+    from ml_product_history a
+    left join ml_product d on d.product_no = a.product_no
+    left join sys_user b on b.user_id = d.create_by
+    left join sys_user c on c.user_id = a.update_by
+    where d.product_id = #{prouctId,jdbcType=BIGINT}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from ml_product_history
+    where id = #{id,jdbcType=BIGINT}
+  </delete>
+  <insert id="insert" parameterType="com.ruoyi.product.domain.ProductHistory">
+    insert into ml_product_history (update_time, update_by,remark,product_no
+      )
+    values (sysdate(), #{updateBy,jdbcType=VARCHAR},
+      #{remark,jdbcType=VARCHAR},#{productNo,jdbcType=VARCHAR}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.ruoyi.product.domain.ProductHistory">
+    insert into ml_product_history
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        update_time,
+      <if test="updateBy != null">
+        update_by,
+      </if>
+      <if test="remark != null">
+        remark,
+      </if>
+      <if test="productNo != null">
+        product_no,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      sysdate(),
+      <if test="updateBy != null">
+        #{updateBy,jdbcType=VARCHAR},
+      </if>
+      <if test="remark != null">
+        #{remark,jdbcType=VARCHAR},
+      </if>
+      <if test="productNo != null">
+        #{productNo,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.ruoyi.product.domain.ProductHistory">
+    update ml_product_history
+    <set>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=VARCHAR},
+      </if>
+      <if test="updateBy != null">
+        update_by = #{updateBy,jdbcType=VARCHAR},
+      </if>
+      <if test="remark != null">
+        remark = #{remark,jdbcType=VARCHAR},
+      </if>
+      <if test="productNo != null">
+        product_no = #{productNo,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.ruoyi.product.domain.ProductHistory">
+    update ml_product_history
+    set update_time = #{updateTime,jdbcType=VARCHAR},
+      update_by = #{updateBy,jdbcType=VARCHAR},
+      remark = #{remark,jdbcType=VARCHAR}
+      product_no = #{productNo,jdbcType=VARCHAR}
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+</mapper>

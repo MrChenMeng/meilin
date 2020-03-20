@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('日产量')" />
+    <th:block th:include="include :: bootstrap-select-css"/>
+</head>
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="capacity-form">
+                <div class="select-list">
+                    <ul>
+                        <li class="select-selectpicker">
+                            生产产线：
+                            <select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择" multiple>
+                                <option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+                            </select>
+                        </li>
+                        <li>
+                            产品名称：<input type="text" id="productName" name="productName"/>
+                        </li>
+                        <li class="select-time">
+                            <label>查询时间： </label>
+                            &nbsp;&nbsp;<input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[startTime]" th:value="${nowTime}"/>
+                            <span>-</span>
+                                <input type="text" class="time-input" id="endTime" placeholder="结束时间" name="params[endTime]" th:value="${nowTime}"/>
+                        </li>
+                        <li>
+                            <button type="button" class="btn btn-primary btn-rounded btn-sm" onclick="search()"><i class="fa fa-search"></i>&nbsp;搜索</button>
+                            <a class="btn btn-warning btn-rounded btn-sm" onclick="reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                        </li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="bootstrap-table" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-bar-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-select-js"/>
+<script th:src="@{/ajax/libs/report/echarts/echarts.min.js}"></script>
+<script th:inline="javascript">
+    var productLines = [[${productLines}]];     //产线集合
+    var datas = [[${@dict.getType('sys_product_unit')}]];
+    var productList = [];
+    $(function () {
+        clickProduct();
+    })
+
+    function clickProduct(){
+        var options = {
+            url:ctx + "product/report/capacity",
+            sortName: "lineId",
+            sortOrder: "asc",
+            modalName: "产品",
+            uniqueId: "productId",
+            id: "bootstrap-table",
+            queryParams: function (params) {
+                var search = $.table.queryParams(params);
+                return search;
+            },
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            columns: [{
+                //field: 'Number',//可不加
+                title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                {
+                    field: 'lineId',
+                    title: '生产产线',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        for (var i = 0; i < productLines.length; i++) {
+                            if (productLines[i].lineId == value) {
+                                actions.push(productLines[i].lineName)
+                            }
+                        }
+                        return actions.join('');
+                    }
+                },
+                {
+                    field: 'productName',
+                    title: '产品名称'
+                },
+                {
+                    field: 'productNo',
+                    title: '产品单号'
+                },
+                {
+                    field: 'productNum',
+                    title: '计划数量'
+                },
+                {
+                    field: 'productAddNum',
+                    title: '生产数量'
+                },
+                {
+                    field: 'createTime',
+                    title: '创建时间'
+                },
+                {
+                    field: 'startTime',
+                    title: '生产时间'
+                },
+                {
+                    field: 'sweepDate',
+                    title: '扫码时间'
+                },
+            ],
+            onLoadSuccess: function (res) {
+                productList = res.datas;
+                var linelist = [];
+                var lineArray = [];
+                var planNumArray = [];
+                var actualNumArray = [];
+                for(var i = 0;i < productList.length; i ++){
+                    if($.inArray(productList[i].lineId,linelist)<0){
+                        linelist.push(productList[i].lineId);
+                    }
+                }
+
+                for(var i in linelist){
+                    var planNum =0;
+                    var actualNum = 0;
+                    for(var j in productList){
+                        if(linelist[i] == productList[j].lineId){
+                            planNum += productList[j].productNum;
+                            actualNum += productList[j].productAddNum;
+                        }
+                    }
+                    planNumArray.push(planNum);
+                    actualNumArray.push(actualNum);
+                    if(linelist[i] == "1"){
+                        lineArray.push("产线一")
+                    }
+                    if(linelist[i] == "2"){
+                        lineArray.push("产线二")
+                    }
+                    if(linelist[i] == "3"){
+                        lineArray.push("产线三")
+                    }
+                    if(linelist[i] == "4"){
+                        lineArray.push("产线四")
+                    }
+                    if(linelist[i] == "5"){
+                        lineArray.push("产线五")
+                    }
+                    if(linelist[i] == "6"){
+                        lineArray.push("产线六")
+                    }
+                }
+                DailyTable(lineArray,planNumArray,actualNumArray)
+            }
+        };
+        $.table.init(options);
+    }
+
+    function DailyTable(lineArray,planNumArray,actualNumArray) {
+        // 基于准备好的dom，初始化echarts实例
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+
+        // 指定图表的配置项和数据
+        var option = {
+            title: {
+                text: '日产能报表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:['计划数量','生产数量']
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    },
+                    dataView: {readOnly: false},
+                    magicType: {type: ['line', 'bar']},
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            grid:{
+                x:60,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: [{
+                type : 'category',
+                data: lineArray
+            }],
+            yAxis: [{}],
+            series: [{
+                name: '计划数量',
+                type: 'bar',
+                data: planNumArray
+            }, {
+                name: '生产数量',
+                type: 'bar',
+                data: actualNumArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function search(){
+        var data = {};
+        data.lineIds = $.common.join($('#lineIds').selectpicker('val'));
+        $.table.search('capacity-form', data);
+    }
+    function reset(){
+        $.form.reset();
+        $("#lineIds").selectpicker('refresh');
+        search()
+    }
+
+</script>
+</body>
+</html>

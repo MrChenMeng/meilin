@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('修改检测部门')" />
+</head>
+<body class="white-bg">
+	<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+		<form class="form-horizontal m" id="form-check-edit" th:object="${check}">
+			<input name="id" type="hidden" th:field="*{id}" />
+			<input id="treeId" name="parentId" type="hidden" th:field="*{parentId}" />
+			<div class="form-group">
+				<label class="col-sm-3 control-label ">上级行业：</label>
+				<div class="col-sm-8">
+				    <div class="input-group">
+						<input class="form-control" type="text" id="treeName" onclick="selectCheckTree()" readonly="true" th:field="*{parentName}">
+					    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+				    </div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label">行业名称：</label>
+				<div class="col-sm-8">
+					<input class="form-control" type="text" name="checkName" th:field="*{checkName}" id="checkName" required>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label">检测编码：</label>
+				<div class="col-sm-8">
+					<input class="form-control" type="text" name="checkCode" th:field="*{checkCode}" id="checkCode" >
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label">显示排序：</label>
+				<div class="col-sm-8">
+					<input class="form-control" type="text" name="orderNum" th:field="*{orderNum}" required>
+				</div>
+			</div>
+		</form>
+	</div>
+	<th:block th:include="include :: footer" />
+	<script type="text/javascript">
+		var prefix = ctx + "product/check";
+		
+		$("#form-check-edit").validate({
+			onkeyup: false,
+			rules:{
+				checkName:{
+					remote: {
+		                url: prefix + "/checkCheckNameUnique",
+		                type: "post",
+		                dataType: "json",
+		                data: {
+		                	"id": function() {
+		                        return $("#id").val();
+		                    },
+		                    "parentId": function() {
+		                        return $("input[name='parentId']").val();
+		                    },
+		        			"checkName": function() {
+		                        return $.common.trim($("#checkName").val());
+		                    }
+		                },
+		                dataFilter: function(data, type) {
+		                	return $.validate.unique(data);
+		                }
+		            }
+				},
+				orderNum:{
+					digits:true
+				}
+			},
+			messages: {
+		        "checkName": {
+		            remote: "检测名称已存在"
+		        }
+		    },
+		    focusCleanup: true
+		});
+		
+		function submitHandler() {
+	        if ($.validate.form()) {
+	        	$.operate.save(prefix + "/edit", $('#form-check-edit').serialize(),function () {
+					parent.queryStandard();
+				});
+	        }
+	    }
+	
+		/*检测行业-修改-选择树*/
+		function selectCheckTree() {
+			var id = $("#treeId").val();
+			if(id > 0) {
+			    var options = {
+					title: '行业选择',
+					width: "380",
+					url: prefix + "/selectCheckTree/" + $("#treeId").val(),
+					callBack: doSubmit
+				};
+				$.modal.openOptions(options);
+			} else {
+        		$.modal.alertError("父行业不能选择");
+        	}
+		}
+		
+		function doSubmit(index, layero){
+			var tree = layero.find("iframe")[0].contentWindow.$._tree;
+			if ($.tree.notAllowLastLevel(tree)) {
+	   			var body = layer.getChildFrame('body', index);
+	   			$("#treeId").val(body.find('#treeId').val());
+	   			$("#treeName").val(body.find('#treeName').val());
+	   			layer.close(index);
+			}
+		}
+	</script>
+</body>
+</html>

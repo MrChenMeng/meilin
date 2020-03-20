@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('温度表')" />
+    <th:block th:include="include :: bootstrap-select-css"/>
+</head><th:block th:include="include :: datetimepicker-css" />
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="template-form">
+                <div class="select-list">
+                    <ul>
+                        <li class="select-selectpicker">
+                            生产产线：
+                            <select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择">
+                                <option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+                            </select>
+                        </li>
+                        <!--
+                        <li>
+                            <label>查询范围： </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="hourse"  value="hourse" checked/> 小时 </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="day"     value="day" /> 天 </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="month"   value="month" /> 月 </label>
+                        </li>
+                        -->
+                        <li class="select-time">
+                            <label>查询时间： </label>
+                            <div class="input-group date">
+                                <input type="text" class="time-input" style="width: auto" id="startTime" placeholder="开始时间" name="params[startTime]" th:value="${startTime}"/>
+                                <span>-</span>
+                                <input type="text" class="time-input" style="width: auto" id="endTime" placeholder="结束时间" name="params[endTime]" th:value="${endTime}"/>
+                            </div>
+                        </li>
+
+                        <li>
+                            <button type="button" class="btn btn-primary btn-rounded btn-sm" onclick="search()"><i class="fa fa-search"></i>&nbsp;搜索</button>
+                            <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                        </li>
+                    </ul>
+                </div>
+                <input type="hidden" name = "eName" value="001805176764">
+            </form>
+        </div>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="bootstrap-table" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-bar-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-7" style="padding-top: 5px;margin-top: 5px;background:#fff;box-shadow: 1px 1px 3px rgba(0,0,0,.2);">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-gauge-chart"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-5" style="padding-top: 5px;margin-top: 5px;background:#fff;box-shadow: 1px 1px 3px rgba(0,0,0,.2);">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-bar-zuansu"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-select-js"/>
+<th:block th:include="include :: datetimepicker-js" />
+<script th:src="@{/ajax/libs/report/echarts/echarts.min.js}"></script>
+<script th:inline="javascript">
+
+    layui.use('laydate', function(){
+        var laydate = layui.laydate;
+        laydate.render({
+            elem: '#startTime',
+            type: 'datetime',
+            trigger: 'click'
+        });
+        laydate.render({
+            elem: '#endTime',
+            type: 'datetime',
+            trigger: 'click'
+        });
+    })
+
+    window.onload = function () {
+        getApi()
+    }
+
+    function getApi() {
+        $.post(ctx + "product/report/getTime",function(result){
+            $("#startTime").val(result.data.startTime)
+            $("#endTime").val(result.data.endTime)
+        })
+        //设置时间 10-分钟  1000-毫秒  这里设置你自己想要的时间
+        setTimeout(getApi,10*60*1000);
+        search()
+    }
+
+    function temperatureTable() {
+        $.table.destroy("bootstrap-table");
+        var lineIds = $("#lineIds").val();
+        if(lineIds == 1){
+            var options = {
+                url:ctx + "product/report/temperature",
+                modalName: "温控",
+                sortName: "dt",
+                sortOrder: "desc",
+                id: "bootstrap-table",
+                queryParams: function (params) {
+                    var search = $.table.queryParams(params);
+                    return search;
+                },
+                showSearch: false,
+                showRefresh: false,
+                showToggle: false,
+                showColumns: false,
+                clickToSelect: true,
+                columns: [{
+                    //field: 'Number',//可不加
+                    title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                    {
+                        field: 'lineId',
+                        title: '生产产线',
+                        formatter: function (value, row, index) {
+                            return "产线一";
+                        }
+                    },
+                    {
+                        field: 'number',
+                        title: '温度',
+                        formatter: function (value, row, index) {
+                            var actions = [];
+                            if(value == 11){
+                                actions.push("实际温度")
+                            }else if (value == 12){
+                                actions.push("设定温度")
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    {
+                        field: 'dt',
+                        title: '日期'
+                    },
+                    {
+                        field: 'values1',
+                        title: '一区'
+                    },
+                    {
+                        field: 'values2',
+                        title: '二区'
+                    },
+                    {
+                        field: 'values3',
+                        title: '三区'
+                    },
+                    {
+                        field: 'values4',
+                        title: '四区'
+                    },
+                    {
+                        field: 'values5',
+                        title: '五区'
+                    },
+                    {
+                        field: 'values6',
+                        title: '法兰区'
+                    },
+                    {
+                        field: 'values7',
+                        title: '机头区'
+                    },
+                    {
+                        field: 'values8',
+                        title: '螺杆运油区'
+                    },
+                    {
+                        field: 'values21',
+                        title: '主机转速'
+                    },
+                    {
+                        field: 'values22',
+                        title: '喂料转速'
+                    },
+                    {
+                        field: 'values23',
+                        title: '切粒转速'
+                    },
+                    {
+                        field: 'values31',
+                        title: '真空度'
+                    },
+                    {
+                        field: 'values41',
+                        title: '拌和温度'
+                    }
+                ],
+                onLoadSuccess:function(res){
+                    var temperatureArray = res.datas;
+                    var avgTempArray = [];
+                    var actTempArray = [];
+                    var temperaArray = [];
+                    var temperaNmaeArray = ["主机转速","喂料转速","切粒转速"];
+                    var temperature=0;
+                    var zhenkong=0;
+                    for(var i in temperatureArray){
+                        if(temperatureArray[i].number ==11){
+                            avgTempArray.push(temperatureArray[i].values1)
+                            avgTempArray.push(temperatureArray[i].values2)
+                            avgTempArray.push(temperatureArray[i].values3)
+                            avgTempArray.push(temperatureArray[i].values4)
+                            avgTempArray.push(temperatureArray[i].values5)
+                            avgTempArray.push(temperatureArray[i].values6)
+                            avgTempArray.push(temperatureArray[i].values7)
+                            avgTempArray.push(temperatureArray[i].values8)
+                            temperaArray.push(temperatureArray[i].values21)
+                            temperaArray.push(temperatureArray[i].values22)
+                            temperaArray.push(temperatureArray[i].values23)
+                            temperature = temperatureArray[i].values41;
+                            zhenkong = temperatureArray[i].values31;
+                        }else{
+                            actTempArray.push(temperatureArray[i].values1)
+                            actTempArray.push(temperatureArray[i].values2)
+                            actTempArray.push(temperatureArray[i].values3)
+                            actTempArray.push(temperatureArray[i].values4)
+                            actTempArray.push(temperatureArray[i].values5)
+                            actTempArray.push(temperatureArray[i].values6)
+                            actTempArray.push(temperatureArray[i].values7)
+                            actTempArray.push(temperatureArray[i].values8)
+                        }
+                    }
+                    BanhuoEchart(temperature,zhenkong);
+                    temperatureEchart(avgTempArray,actTempArray)
+                    ZuansuEchart(temperaNmaeArray,temperaArray);
+                }
+            };
+        }else if(lineIds == 2 || lineIds == 4 || lineIds == 5){
+            var options = {
+                url:ctx + "product/report/temperature",
+                modalName: "温控",
+                sortName: "dt",
+                sortOrder: "desc",
+                id: "bootstrap-table",
+                queryParams: function (params) {
+                    var search = $.table.queryParams(params);
+                    return search;
+                },
+                showSearch: false,
+                showRefresh: false,
+                showToggle: false,
+                showColumns: false,
+                clickToSelect: true,
+                columns: [{
+                    //field: 'Number',//可不加
+                    title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                    {
+                        field: 'lineId',
+                        title: '生产产线',
+                        formatter: function (value, row, index) {
+                            var actions = [];
+                            if(value == 1){
+                                actions.push("产线一")
+                            }else if (value == 2){
+                                actions.push("产线二")
+                            }else if (value == 3){
+                                actions.push("产线三")
+                            }else if (value == 4){
+                                actions.push("产线四")
+                            }else if (value == 5){
+                                actions.push("产线五")
+                            }else if (value == 6){
+                                actions.push("产线六")
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    {
+                        field: 'number',
+                        title: '温度',
+                        formatter: function (value, row, index) {
+                            var actions = [];
+                            if(value == lineIds+1){
+                                actions.push("实际温度")
+                            }else if (value == lineIds+2){
+                                actions.push("设定温度")
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    {
+                        field: 'dt',
+                        title: '日期',
+                        width:300
+                    },
+                    {
+                        field: 'values1',
+                        title: '上机一区'
+                    },
+                    {
+                        field: 'values2',
+                        title: '上机二区'
+                    },
+                    {
+                        field: 'values3',
+                        title: '上机三区'
+                    },
+                    {
+                        field: 'values4',
+                        title: '上机四区'
+                    },
+                    {
+                        field: 'values5',
+                        title: '上机五区'
+                    },
+                    {
+                        field: 'values6',
+                        title: '上机六区'
+                    },
+                    {
+                        field: 'values7',
+                        title: '上机七区'
+                    },
+                    {
+                        field: 'values8',
+                        title: '上机八区'
+                    },{
+                        field: 'values9',
+                        title: '上机九区'
+                    },{
+                        field: 'values10',
+                        title: '上机十区'
+                    },
+                    {
+                        field: 'values11',
+                        title: '下机一区'
+                    },
+                    {
+                        field: 'values12',
+                        title: '下机二区'
+                    },
+                    {
+                        field: 'values13',
+                        title: '下机三区'
+                    },
+                    {
+                        field: 'values14',
+                        title: '下机四区'
+                    },
+                    {
+                        field: 'values15',
+                        title: '下机换网区'
+                    },
+                    {
+                        field: 'values16',
+                        title: '下机机头区'
+                    },
+                    {
+                        field: 'values21',
+                        title: '双螺杆转速'
+                    },
+                    {
+                        field: 'values22',
+                        title: '单螺杆转速'
+                    },{
+                        field: 'values23',
+                        title: '喂料转速'
+                    },
+                    {
+                        field: 'values24',
+                        title: '切粒转速'
+                    },
+                    {
+                        field: 'values31',
+                        title: '真空度'
+                    },
+                    {
+                        field: 'values41',
+                        title: '拌和温度'
+                    }
+                ],
+                onLoadSuccess:function(res){
+                    var temperatureArray = res.datas;
+                    var avgTempArray = [];
+                    var actTempArray = [];
+                    var temperaNmaeArray=["双螺杆转速","单螺杆转速","喂料转速","切粒转速"];
+                    var temperaArray = [];
+                    var temperature = 0;
+                    var zhenkong = 0;
+                    for(var i in temperatureArray){
+                        if(temperatureArray[i].number ==lineIds+1){
+                            avgTempArray.push(temperatureArray[i].values1)
+                            avgTempArray.push(temperatureArray[i].values2)
+                            avgTempArray.push(temperatureArray[i].values3)
+                            avgTempArray.push(temperatureArray[i].values4)
+                            avgTempArray.push(temperatureArray[i].values5)
+                            avgTempArray.push(temperatureArray[i].values6)
+                            avgTempArray.push(temperatureArray[i].values7)
+                            avgTempArray.push(temperatureArray[i].values8)
+                            avgTempArray.push(temperatureArray[i].values9)
+                            avgTempArray.push(temperatureArray[i].values10)
+                            avgTempArray.push(temperatureArray[i].values11)
+                            avgTempArray.push(temperatureArray[i].values12)
+                            avgTempArray.push(temperatureArray[i].values13)
+                            avgTempArray.push(temperatureArray[i].values14)
+                            avgTempArray.push(temperatureArray[i].values15)
+                            avgTempArray.push(temperatureArray[i].values16)
+                            temperaArray.push(temperatureArray[i].values21)
+                            temperaArray.push(temperatureArray[i].values22)
+                            temperaArray.push(temperatureArray[i].values23)
+                            temperaArray.push(temperatureArray[i].values24)
+                            temperature = temperatureArray[i].values41;
+                            zhenkong = temperatureArray[i].values31;
+                        }else if(temperatureArray[i].number ==lineIds+2){
+                            actTempArray.push(temperatureArray[i].values1)
+                            actTempArray.push(temperatureArray[i].values2)
+                            actTempArray.push(temperatureArray[i].values3)
+                            actTempArray.push(temperatureArray[i].values4)
+                            actTempArray.push(temperatureArray[i].values5)
+                            actTempArray.push(temperatureArray[i].values6)
+                            actTempArray.push(temperatureArray[i].values7)
+                            actTempArray.push(temperatureArray[i].values8)
+                            actTempArray.push(temperatureArray[i].values9)
+                            actTempArray.push(temperatureArray[i].values10)
+                            actTempArray.push(temperatureArray[i].values11)
+                            actTempArray.push(temperatureArray[i].values12)
+                            actTempArray.push(temperatureArray[i].values13)
+                            actTempArray.push(temperatureArray[i].values14)
+                            actTempArray.push(temperatureArray[i].values15)
+                            actTempArray.push(temperatureArray[i].values16)
+                        }
+                    }
+                    lineName = $("#lineIds").find("option:selected").text();
+                    temperatureTwoEchart(lineName,avgTempArray,actTempArray)
+                    ZuansuEchart(temperaNmaeArray,temperaArray);
+                    BanhuoEchart(temperature,zhenkong);
+                }
+            };
+        }else if(lineIds ==3){
+            var options = {
+                url:ctx + "product/report/temperature",
+                modalName: "温控",
+                sortName: "dt",
+                sortOrder: "desc",
+                id: "bootstrap-table",
+                queryParams: function (params) {
+                    var search = $.table.queryParams(params);
+                    return search;
+                },
+                showSearch: false,
+                showRefresh: false,
+                showToggle: false,
+                showColumns: false,
+                clickToSelect: true,
+                columns: [{
+                    //field: 'Number',//可不加
+                    title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                    {
+                        field: 'lineId',
+                        title: '生产产线',
+                        formatter: function (value, row, index) {
+                            return "产线三";
+                        }
+                    },
+                    {
+                        field: 'number',
+                        title: '温度',
+                        formatter: function (value, row, index) {
+                            var actions = [];
+                            if(value == 31){
+                                actions.push("实际温度")
+                            }else if (value == 32){
+                                actions.push("设定温度")
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    {
+                        field: 'dt',
+                        title: '日期'
+                    },
+                    {
+                        field: 'values1',
+                        title: '上机一区'
+                    },
+                    {
+                        field: 'values2',
+                        title: '上机二区'
+                    },
+                    {
+                        field: 'values3',
+                        title: '上机三区'
+                    },
+                    {
+                        field: 'values4',
+                        title: '上机四区'
+                    },
+                    {
+                        field: 'values5',
+                        title: '上机五区'
+                    },
+                    {
+                        field: 'values6',
+                        title: '上机六区'
+                    },
+                    {
+                        field: 'values7',
+                        title: '上机机头区'
+                    },
+                    {
+                        field: 'values8',
+                        title: '下机一区'
+                    },
+                    {
+                        field: 'values9',
+                        title: '下机二区'
+                    },{
+                        field: 'values10',
+                        title: '下机机头区'
+                    },
+                    {
+                        field: 'values21',
+                        title: '双螺杆转速'
+                    },
+                    {
+                        field: 'values22',
+                        title: '单螺杆转速'
+                    },{
+                        field: 'values23',
+                        title: '喂料转速'
+                    },
+                    {
+                        field: 'values24',
+                        title: '切粒转速'
+                    },
+                    {
+                        field: 'values31',
+                        title: '真空度'
+                    },
+                    {
+                        field: 'values41',
+                        title: '拌和温度'
+                    }
+                ],
+                onLoadSuccess:function(res){
+                    var temperatureArray = res.datas;
+                    var avgTempArray = [];
+                    var actTempArray = [];
+                    var temperaNmaeArray=["双螺杆转速","单螺杆转速","喂料转速","切粒转速"];
+                    var temperaArray = [];
+                    var temperature=0;
+                    var zhenkong = 0;
+                    for(var i in temperatureArray){
+                        if(temperatureArray[i].number ==31){
+                            avgTempArray.push(temperatureArray[i].values1)
+                            avgTempArray.push(temperatureArray[i].values2)
+                            avgTempArray.push(temperatureArray[i].values3)
+                            avgTempArray.push(temperatureArray[i].values4)
+                            avgTempArray.push(temperatureArray[i].values5)
+                            avgTempArray.push(temperatureArray[i].values6)
+                            avgTempArray.push(temperatureArray[i].values7)
+                            avgTempArray.push(temperatureArray[i].values8)
+                            avgTempArray.push(temperatureArray[i].values9)
+                            avgTempArray.push(temperatureArray[i].values10)
+                            temperaArray.push(temperatureArray[i].values21)
+                            temperaArray.push(temperatureArray[i].values22)
+                            temperaArray.push(temperatureArray[i].values23)
+                            temperaArray.push(temperatureArray[i].values24)
+                            temperature = temperatureArray[i].values41;
+                            zhenkong = temperatureArray[i].values31;
+                        }else if(temperatureArray[i].number ==32){
+                            actTempArray.push(temperatureArray[i].values1)
+                            actTempArray.push(temperatureArray[i].values2)
+                            actTempArray.push(temperatureArray[i].values3)
+                            actTempArray.push(temperatureArray[i].values4)
+                            actTempArray.push(temperatureArray[i].values5)
+                            actTempArray.push(temperatureArray[i].values6)
+                            actTempArray.push(temperatureArray[i].values7)
+                            actTempArray.push(temperatureArray[i].values8)
+                            actTempArray.push(temperatureArray[i].values9)
+                            actTempArray.push(temperatureArray[i].values10)
+                        }
+                    }
+                    temperatureThreeEchart(avgTempArray,actTempArray)
+                    ZuansuEchart(temperaNmaeArray,temperaArray);
+                    BanhuoEchart(temperature,zhenkong);
+                }
+            };
+        }else if (lineIds == 6){
+            var options = {
+                url:ctx + "product/report/temperature",
+                modalName: "温控",
+                sortName: "dt",
+                sortOrder: "desc",
+                id: "bootstrap-table",
+                queryParams: function (params) {
+                    var search = $.table.queryParams(params);
+                    return search;
+                },
+                showSearch: false,
+                showRefresh: false,
+                showToggle: false,
+                showColumns: false,
+                clickToSelect: true,
+                columns: [{
+                    //field: 'Number',//可不加
+                    title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                    {
+                        field: 'lineId',
+                        title: '生产产线',
+                        formatter: function (value, row, index) {
+                            return "产线一";
+                        }
+                    },
+                    {
+                        field: 'number',
+                        title: '温度',
+                        formatter: function (value, row, index) {
+                            var actions = [];
+                            if(value == 61){
+                                actions.push("实际温度")
+                            }else if (value == 62){
+                                actions.push("设定温度")
+                            }
+                            return actions.join('');
+                        }
+                    },
+                    {
+                        field: 'dt',
+                        title: '日期'
+                    },
+                    {
+                        field: 'values1',
+                        title: '一区'
+                    },
+                    {
+                        field: 'values2',
+                        title: '二区'
+                    },
+                    {
+                        field: 'values3',
+                        title: '三区'
+                    },
+                    {
+                        field: 'values4',
+                        title: '四区'
+                    },
+                    {
+                        field: 'values5',
+                        title: '五区'
+                    },
+                    {
+                        field: 'values6',
+                        title: '六区'
+                    },
+                    {
+                        field: 'values7',
+                        title: '七区'
+                    },
+                    {
+                        field: 'values8',
+                        title: '八区'
+                    },
+                    {
+                        field: 'values21',
+                        title: '主机转速'
+                    },
+                    {
+                        field: 'values22',
+                        title: '喂料转速'
+                    },
+                    {
+                        field: 'values23',
+                        title: '切粒转速'
+                    },
+                    {
+                        field: 'values31',
+                        title: '真空度'
+                    },
+                    {
+                        field: 'values41',
+                        title: '拌和温度'
+                    }
+                ],
+                onLoadSuccess:function(res){
+                    var temperatureArray = res.datas;
+                    var avgTempArray = [];
+                    var actTempArray = [];
+                    var temperaNmaeArray =["主机转速","喂料转速","切粒转速"];
+                    var temperaArray = [];
+                    var temperature=0;
+                    var zhenkong = 0;
+                    for(var i in temperatureArray){
+                        if(temperatureArray[i].number ==61){
+                            avgTempArray.push(temperatureArray[i].values1)
+                            avgTempArray.push(temperatureArray[i].values2)
+                            avgTempArray.push(temperatureArray[i].values3)
+                            avgTempArray.push(temperatureArray[i].values4)
+                            avgTempArray.push(temperatureArray[i].values5)
+                            avgTempArray.push(temperatureArray[i].values6)
+                            avgTempArray.push(temperatureArray[i].values7)
+                            avgTempArray.push(temperatureArray[i].values8)
+                            temperaArray.push(temperatureArray[i].values21)
+                            temperaArray.push(temperatureArray[i].values22)
+                            temperaArray.push(temperatureArray[i].values23)
+                            temperature = temperatureArray[i].values41
+                            zhenkong =temperatureArray[i].values31
+                        }else if(temperatureArray[i].number ==62){
+                            actTempArray.push(temperatureArray[i].values1)
+                            actTempArray.push(temperatureArray[i].values2)
+                            actTempArray.push(temperatureArray[i].values3)
+                            actTempArray.push(temperatureArray[i].values4)
+                            actTempArray.push(temperatureArray[i].values5)
+                            actTempArray.push(temperatureArray[i].values6)
+                            actTempArray.push(temperatureArray[i].values7)
+                            actTempArray.push(temperatureArray[i].values8)
+                        }
+                    }
+                    temperatureSixEchart(avgTempArray,actTempArray)
+                    ZuansuEchart(temperaNmaeArray,temperaArray);
+                    BanhuoEchart(temperature,zhenkong);
+                }
+            };
+        }
+        $.table.init(options);
+    }
+
+    function  temperatureEchart(avgTempArray,actTempArray){
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+        myChart.clear();
+        var option = {
+            title: {
+                text: '产线一温控表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:["实际温度","设定温度"]
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: ["一区","二区","三区","四区","五区","法兰区","机头区","螺杆运油区"]
+            },
+            yAxis: {},
+            series: [{
+                name: "实际温度",
+                type: 'line',
+                data: avgTempArray
+            },{
+                name: "设定温度",
+                type: 'line',
+                data: actTempArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function  temperatureTwoEchart(lineName,avgTempArray,actTempArray){
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+        myChart.clear();
+        var option = {
+            title: {
+                text: lineName + '温控表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:["实际温度","设定温度"]
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: ["上机一区","上机二区","上机三区","上机四区","上机五区","上机六区","上机七区","上机八区","上机九区","上机十区","下机一区","下机二区","下机三区","下机四区","下机换网区","下机机头区"]
+            },
+            yAxis: {},
+            series: [{
+                name: "实际温度",
+                type: 'line',
+                data: avgTempArray
+            },{
+                name: "设定温度",
+                type: 'line',
+                data: actTempArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function  temperatureThreeEchart(avgTempArray,actTempArray){
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+        myChart.clear();
+        var option = {
+            title: {
+                text: '产线三温控表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:["实际温度","设定温度"]
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: ["上机一区","上机二区","上机三区","上机四区","上机五区","上机六区","上机机头区","下机一区","下机二区","下机机头区"]
+            },
+            yAxis: {},
+            series: [{
+                name: "实际温度",
+                type: 'line',
+                data: avgTempArray
+            },{
+                name: "设定温度",
+                type: 'line',
+                data: actTempArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function  temperatureSixEchart(avgTempArray,actTempArray){
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+        myChart.clear();
+        var option = {
+            title: {
+                text: '产线六温控表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:["实际温度","设定温度"]
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: ["一区","二区","三区","四区","五区","六区","七区","八区"]
+            },
+            yAxis: {},
+            series: [{
+                name: "实际温度",
+                type: 'line',
+                data: avgTempArray
+            },{
+                name: "设定温度",
+                type: 'line',
+                data: actTempArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+    
+    function ZuansuEchart(temperaNmaeArray,temperaArray) {
+        var myChart = echarts.init(document.getElementById('echarts-bar-zuansu'));
+
+        // 指定图表的配置项和数据
+        var option = {
+            title: {
+                text: '挤出工段转速监控'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: [{
+                type : 'category',
+                data: temperaNmaeArray
+            }],
+            yAxis: [{}],
+            series: [{
+                name: '转速',
+                type: 'bar',
+                data: temperaArray
+            }]
+        };
+        myChart.setOption(option);
+    }
+
+    function BanhuoEchart(temperature,zhenkong) {
+        var gaugeChart = echarts.init(document.getElementById("echarts-gauge-chart"));
+        var gaugeoption = {
+            title: {
+                text:   '真空度及拌和温度'
+            },
+            tooltip : {
+                formatter: "{a} <br/>{c} {b}"
+            },
+            toolbox: {
+                show : true,
+                feature : {
+                    mark : {show: true},
+                    restore : {show: true},
+                    saveAsImage : {show: true}
+                }
+            },
+            series : [
+                {
+                    name:'温度',
+                    type:'gauge',
+                    min:0,
+                    max:220,
+                    splitNumber:11,
+                    axisLine: {            // 坐标轴线
+                        lineStyle: {       // 属性lineStyle控制线条样式
+                            width: 10
+                        }
+                    },
+                    axisTick: {            // 坐标轴小标记
+                        length :15,        // 属性length控制线长
+                        lineStyle: {       // 属性lineStyle控制线条样式
+                            color: 'auto'
+                        }
+                    },
+                    splitLine: {           // 分隔线
+                        length :20,         // 属性length控制线长
+                        lineStyle: {       // 属性lineStyle（详见lineStyle）控制线条样式
+                            color: 'auto'
+                        }
+                    },
+                    title : {
+                        textStyle: {       // 其余属性默认使用全局文本样式，详见TEXTSTYLE
+                            fontWeight: 'bolder',
+                            fontSize: 20,
+                            fontStyle: 'italic'
+                        }
+                    },
+                    detail : {
+                        textStyle: {       // 其余属性默认使用全局文本样式，详见TEXTSTYLE
+                            fontWeight: 'bolder'
+                        }
+                    },
+                    data:[{value: temperature, name: '℃'}]
+                },
+                {
+                    name:'真空度',
+                    type:'gauge',
+                    center : ['25%', '55%'],    // 默认全局居中
+                    radius : '50%',
+                    min:0,
+                    max:7,
+                    endAngle:45,
+                    splitNumber:7,
+                    axisLine: {            // 坐标轴线
+                        lineStyle: {       // 属性lineStyle控制线条样式
+                            width: 8
+                        }
+                    },
+                    axisTick: {            // 坐标轴小标记
+                        length :12,        // 属性length控制线长
+                        lineStyle: {       // 属性lineStyle控制线条样式
+                            color: 'auto'
+                        }
+                    },
+                    splitLine: {           // 分隔线
+                        length :20,         // 属性length控制线长
+                        lineStyle: {       // 属性lineStyle（详见lineStyle）控制线条样式
+                            color: 'auto'
+                        }
+                    },
+                    pointer: {
+                        width:5
+                    },
+                    title : {
+                        offsetCenter: [0, '-30%'],       // x, y，单位px
+                    },
+                    detail : {
+                        textStyle: {       // 其余属性默认使用全局文本样式，详见TEXTSTYLE
+                            fontWeight: 'bolder'
+                        }
+                    },
+                    data:[{value: zhenkong, name: '%'}]
+                }
+            ]
+        };
+        gaugeChart.setOption(gaugeoption);
+        $(window).resize(gaugeChart.resize);
+
+    }
+
+    function search(){
+        temperatureTable();
+    }
+    
+   function dataType(type){
+        alert(dataType)
+   }
+
+</script>
+</body>
+</html>

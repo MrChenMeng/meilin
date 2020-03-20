@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('能耗表')" />
+    <th:block th:include="include :: bootstrap-select-css"/>
+</head>
+<body class="gray-bg">
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <form id="energy-form">
+                <div class="select-list">
+                    <ul>
+                        <li class="select-selectpicker">
+                            生产产线：
+                            <select name="lineIds" id="lineIds" class="selectpicker"  data-none-selected-text="请选择">
+                                <option th:each="line : ${productLines}" th:text="${line.lineName}" th:value="${line.lineId}"></option>
+                                <option value="1,2,3,4,5,6" selected>全部</option>
+                            </select>
+                        </li>
+                        <li>
+                            <label>查询范围： </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="hourse"  value="hourse" checked/> 小时 </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="day"     value="day" /> 天 </label>
+                            <label class="radio-box"> <input type="radio" name="type" id="month"   value="month" /> 月 </label>
+                        </li>
+                        <li class="select-time">
+                            <label>查询时间： </label>
+                            &nbsp;&nbsp;<input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[startTime]" th:value="${nowTime}"/>
+                            <span>-</span>
+                                <input type="text" class="time-input" id="endTime" placeholder="结束时间" name="params[endTime]" th:value="${nowTime}"/>
+                        </li>
+                        <li>
+                            <button type="button" class="btn btn-primary btn-rounded btn-sm" onclick="search()"><i class="fa fa-search"></i>&nbsp;搜索</button>
+                            <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                        </li>
+                    </ul>
+                </div>
+                <input type="hidden" name = "eName" value="001805176764">
+            </form>
+        </div>
+        <div class="col-sm-12 select-table table-striped">
+            <table id="bootstrap-table" data-mobile-responsive="true"></table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+            <div class="ibox float-e-margins">
+                <div class="ibox-content">
+                    <div class="echarts" id="echarts-bar-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-select-js"/>
+<script th:src="@{/ajax/libs/report/echarts/echarts.min.js}"></script>
+<script th:inline="javascript">
+    /*
+    var socket;
+    if(typeof(WebSocket) == "undefined") {
+        $.modal.msgError("您的浏览器不支持webSocket，请更换浏览器尝试，否则不能展示订单动态");
+    }else{
+        //实现化WebSocket对象，指定要连接的服务器地址与端口  建立连接
+        //等同于socket = new WebSocket("ws://localhost:8083/checkcentersys/websocket/20");
+        socket = new WebSocket("ws://localhost:8080"+"/websocket");
+        //打开事件
+        socket.onopen = function() {
+            heartCheck.start();
+            //socket.send("这是来自客户端的消息" + location.href + new Date());
+        };
+        //获得消息事件
+        socket.onmessage = function(msg) {
+            //心跳重置
+            console.log(msg.data);
+            energyTable();
+            heartCheck.reset();
+            //处理数据
+        };
+        //关闭事件
+        socket.onclose = function(event) {
+            if (event.code != 6000) {
+                socket = new WebSocket("ws://localhost:8080"+"/websocket");//重连
+            }
+        };
+        //发生了错误事件
+        socket.onerror = function() {
+            socket = new WebSocket("ws://localhost:80"+"/websocket");//重连
+            $.modal.msgWarning("Socket发生了错误,已经重连");
+        }
+
+        //心跳对象
+        var heartCheck = {
+            timeout: 60000,//60s
+            timeoutObj: null,
+            reset: function(){
+                clearInterval(this.timeoutObj);
+                this.start();
+            },
+            start: function(){
+                this.timeoutObj = setInterval(function(){
+                    if(socket.readyState==1){
+                        socket.send("哈哈哈哈");
+                    }
+                }, this.timeout)
+            }
+        };
+    }
+    */
+    window.onload = function () {
+        getApi();
+    }
+
+    function getApi() {
+        //设置时间 10-分钟  1000-毫秒  这里设置你自己想要的时间
+        setTimeout(getApi,10*60*1000);
+        search()
+    }
+
+    $(function () {
+        energyTable();
+    })
+
+    function energyTable() {
+        var options = {
+            url:ctx + "product/report/energy",
+            modalName: "能耗",
+            id: "bootstrap-table",
+            queryParams: function (params) {
+                var search = $.table.queryParams(params);
+                return search;
+            },
+            showSearch: false,
+            showRefresh: false,
+            showToggle: false,
+            showColumns: false,
+            columns: [{
+                    //field: 'Number',//可不加
+                    title: '序号',//标题  可不加
+                    formatter: function (value, row, index) {
+                        return index+1;
+                    }
+                },
+                {
+                    field: 'lineId',
+                    title: '生产产线',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        if(value == 1){
+                            actions.push("产线一")
+                        }else if (value == 2){
+                            actions.push("产线二")
+                        }else if (value == 3){
+                            actions.push("产线三")
+                        }else if (value == 4){
+                            actions.push("产线四")
+                        }else if (value == 5){
+                            actions.push("产线五")
+                        }else if (value == 6){
+                            actions.push("产线六")
+                        }
+                        return actions.join('');
+                    }
+                },
+                {
+                    field: 'zong',
+                    title: '耗电量'
+                },
+                {
+                    field: 'time',
+                    title: '时间'
+                }
+            ],
+            onLoadSuccess:function(res){
+                var timeArray = [];
+                var lineName = "";
+                var lineArray=[];
+                var energyList = res.datas;
+                for(var i = 0;i < energyList.length; i ++){
+                    timeArray.push(energyList[i].time);
+                }
+                $.unique(timeArray);
+                var linds = $("#lineIds").val();
+                if(linds == "1,2,3,4,5,6"){
+                    var oneArray = [];
+                    var twoArray = [];
+                    var threeArray = [];
+                    var thourArray = [];
+                    var fiveArray = [];
+                    var sixArray = [];
+                    for(var i in timeArray){
+                        for(var j =0;j<energyList.length;j++){
+                            if(timeArray[i] == energyList[j].time){
+                                if(energyList[j].lineId == 1){
+                                    oneArray.push(energyList[j].zong)
+                                }
+                                if(energyList[j].lineId == 2){
+                                    twoArray.push(energyList[j].zong)
+                                }
+                                if(energyList[j].lineId == 3){
+                                    threeArray.push(energyList[j].zong)
+                                }
+                                if(energyList[j].lineId == 4){
+                                    thourArray.push(energyList[j].zong)
+                                }
+                                if(energyList[j].lineId == 5){
+                                    fiveArray.push(energyList[j].zong)
+                                }
+                                if(energyList[j].lineId == 6){
+                                    sixArray.push(energyList[j].zong)
+                                }
+                            }
+                        }
+                        if(oneArray.length <= i){
+                            oneArray.push(0)
+                        }
+                        if(twoArray.length <= i){
+                            twoArray.push(0)
+                        }
+                        if(threeArray.length <= i){
+                            threeArray.push(0)
+                        }
+                        if(thourArray.length <= i){
+                            thourArray.push(0)
+                        }
+                        if(fiveArray.length <= i){
+                            fiveArray.push(0)
+                        }
+                        if(sixArray.length <= i){
+                            sixArray.push(0)
+                        }
+                    }
+                    lineName="";
+                    lineArray=["产线一","产线二","产线三","产线四","产线五","产线六"];
+                    energyEchart(lineName,lineArray,timeArray,oneArray,twoArray,threeArray,thourArray,fiveArray,sixArray)
+                }else{
+                    var singleArray = [];
+                    lineName = $("#lineIds").find("option:selected").text();
+                    lineArray.push(lineName)
+                    for(var j in energyList){
+                        singleArray.push(energyList[j].zong)
+                    }
+                    energySigleEchart(lineName,lineArray,timeArray,singleArray)
+                }
+            }
+        };
+        $.table.init(options);
+    }
+
+    function  energySigleEchart(lineName,lineArray,timeArray,singleArray){
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+        myChart.clear();
+        var option = {
+            title: {
+                text: lineName+'能耗表'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:lineArray
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: timeArray
+            },
+            yAxis: {},
+            series: [{
+                name: lineName,
+                type: 'bar',
+                data: singleArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function energyEchart(lineName,lineArray,timeArray,oneArray,twoArray,threeArray,thourArray,fiveArray,sixArray) {
+        // 基于准备好的dom，初始化echarts实例
+        var myChart = echarts.init(document.getElementById('echarts-bar-chart'));
+
+        // 指定图表的配置项和数据
+        var option = {
+            title: {
+                text: lineName+'能耗表'
+            },
+            tooltip: {trigger: 'axis'},
+            legend: {
+                data:lineArray
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }, //区域缩放，区域缩放还原
+                    dataView: {
+                        readOnly: false
+                    }, //数据视图
+                    magicType: {
+                        type: ['line', 'bar']
+                    },  //切换为折线图，切换为柱状图
+                    restore: {},  //还原
+                    saveAsImage: {}   //保存为图片
+                }
+            },
+            grid:{
+                x:30,
+                x2:40,
+                y2:24
+            },
+            calculable : true,
+            xAxis: {
+                data: timeArray
+            },
+            yAxis: {},
+            series: [{
+                name: '产线一',
+                type: 'bar',
+                data: oneArray
+            },{
+                name: '产线二',
+                type: 'bar',
+                data: twoArray
+            },{
+                name: '产线三',
+                type: 'bar',
+                data: threeArray
+            },{
+                name: '产线四',
+                type: 'bar',
+                data: thourArray
+            },{
+                name: '产线五',
+                type: 'bar',
+                data: fiveArray
+            },{
+                name: '产线六',
+                type: 'bar',
+                data: sixArray
+            }]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    }
+
+    function search(){
+        $.table.search('energy-form');
+    }
+   function dataType(type){
+        alert(dataType)
+   }
+
+</script>
+</body>
+</html>

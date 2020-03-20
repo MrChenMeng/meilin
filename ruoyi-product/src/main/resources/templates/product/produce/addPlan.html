@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('新增产品名称')" />
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+	<form class="form-horizontal m" id="form-plan-addPro">
+
+		<div class="form-group">
+			<label class="col-sm-3 control-label">产品名称：</label>
+			<div class="col-sm-9">
+				<input class="form-control" type="text" name="planName" id="planName"  >
+			</div>
+		</div>
+
+		<!--<div class="form-group">-->
+			<!--<label class="col-sm-3 control-label">单位：</label>-->
+			<!--<div class="col-sm-9">-->
+				<!--<select name="planUnit" id="planUnit" class="form-control m-b" th:with="type=${@dict.getType('sys_product_unit')}">-->
+					<!--<option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictCode}"></option>-->
+				<!--</select>-->
+			<!--</div>-->
+		<!--</div>-->
+
+		<!--<div class="form-group">-->
+			<!--<label class="col-sm-3 control-label">单价：</label>-->
+			<!--<div class="col-sm-9">-->
+				<!--<input class="form-control" type="text" name="planPrice" id="planPrice" >-->
+			<!--</div>-->
+		<!--</div>-->
+
+
+		<div class="form-group">
+			<label class="col-sm-3 control-label">备注：</label>
+			<div class="col-sm-9">
+				<textarea id="remark" name="remark" class="form-control"></textarea>
+			</div>
+		</div>
+        <button style="display:none" id="AdminFormSaveBtn"></button>
+	</form>
+</div>
+<th:block th:include="include :: footer" />
+<script type="text/javascript">
+	var prefix = ctx + "product/plan";
+
+
+
+	$("#form-plan-addPro").validate({
+		onkeyup: false,
+		rules:{
+			planName:{
+				remote: {
+					url: prefix + "/checkProductCodeUnique",
+					type: "post",
+					dataType: "json",
+					data: {
+						"planName" : function() {
+							return $.common.trim($("#planName").val());
+						}
+					},
+					dataFilter: function(data, type) {
+						return $.validate.unique(data);
+					}
+				},
+				required:true
+			}
+		},
+		messages: {
+			"planName": {
+				remote: "名称已经存在"
+			}
+		},
+		focusCleanup: true
+	});
+
+	// $("#AdminFormSaveBtn").click(function(){
+	// 	if ($.validate.form()) {
+	// 		$.operate.save(prefix + "/add", $('#form-plan-addPro').serialize(),function (result) {
+	// 			if(result.code===0){
+	// 				var plan = result.data;
+	// 				console.log(plan);
+	// 				parent.afterAddPlan(plan.planId,plan.planName);
+	// 			}
+	// 		});
+	// 		$.modal.close();
+	// 	}
+	// })
+
+	function submitHandler() {
+		if ($.validate.form()) {
+			$.operate.save(prefix + "/add", $('#form-plan-addPro').serialize(),function (result) {
+				if(result.code===0){
+					var plan = result.data;
+					parent.afterAddPlan(plan.planId,plan.planName);
+					$.modal.close();
+				}else{
+					$.modal.msgWarning(result.msg);
+				}
+			});
+		}
+	}
+</script>
+</body>
+</html>

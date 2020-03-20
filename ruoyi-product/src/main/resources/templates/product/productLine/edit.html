@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+	<th:block th:include="include :: header('修改产线')" />
+</head>
+<body class="white-bg">
+	<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+		<form class="form-horizontal m" id="form-productLine-edit" th:object="${productLine}">
+			<input id="lineId" name="lineId"  type="hidden" th:field="*{lineId}" />
+			<input name="status" hidden value="1">
+			<div class="form-group">
+				<label class="col-sm-2 control-label ">产品名称：</label>
+				<div class="col-sm-9">
+					<input class="form-control" type="text" name="lineName" id="lineName" th:field="*{lineName}" required>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label ">产品编码：</label>
+				<div class="col-sm-9">
+					<input class="form-control" type="text" name="lineCode" id="lineCode" th:field="*{lineCode}" required>
+				</div>
+			</div>
+
+
+			<div class="form-group">
+				<label class="col-sm-2 control-label">显示排序：</label>
+				<div class="col-sm-9">
+					<input class="form-control" type="text" name="orderNum" th:field="*{orderNum}" required>
+				</div>
+			</div>
+
+
+
+			<div class="form-group">
+				<label class="col-sm-2 control-label">备注：</label>
+				<div class="col-sm-9">
+					<textarea id="remark" name="remark" class="form-control">[[*{remark}]]</textarea>
+				</div>
+			</div>
+		</form>
+	</div>
+	<th:block th:include="include :: footer" />
+	<script type="text/javascript">
+		var prefix = ctx + "product/productLine";
+	
+		$("#form-productLine-edit").validate({
+			onkeyup: false,
+			rules:{
+				lineCode:{
+					minlength: 3,
+					remote: {
+						url: prefix + "/checkLineCode",
+						type: "post",
+						dataType: "json",
+						data: {
+							lineId : function() {
+								return $("#lineId").val();
+							},
+							lineCode : function() {
+								return $.common.trim($("#lineCode").val());
+							}
+						},
+						dataFilter: function(data, type) {
+							return $.validate.unique(data);
+						}
+					}
+				},
+				orderNum:{
+					digits:true
+				}
+			},
+			messages: {
+				"lineCode": {
+					remote: "该产线编码已经存在"
+				}
+			},
+			focusCleanup: true
+		});
+		
+		function submitHandler() {
+	        if ($.validate.form()) {
+	        	$.operate.save(prefix + "/edit", $('#form-productLine-edit').serialize());
+	        }
+	    }
+	</script>
+</body>
+</html>

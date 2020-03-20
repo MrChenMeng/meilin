@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('打印模板')" />
+    <th:block th:include="include :: print-css" />
+</head>
+<body class="gray-bg">
+    <div id="prevViewDiv">
+
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: print-js" />
+    <script th:src="@{/ajax/libs/hiprint/custom_test/custom-etype-provider.js}"></script>
+    <script th:src="@{/ajax/libs/hiprint/custom_test/custom-print-json.js}"></script>
+    <script th:inline="javascript">
+        var printTemplate = [[${printTemplate}]]
+        var customPrintJson = JSON.parse(printTemplate.content);
+        var printData = {};
+        $(document).ready(function () {
+            hiprint.init({
+                providers: [new customElementTypeProvider()]
+            });
+            hiprintTemplate = new hiprint.PrintTemplate({
+                template: customPrintJson,
+                settingContainer: '#PrintElementOptionSetting',
+                paginationContainer: '.hiprint-printPagination'
+            });
+            $('#prevViewDiv').html(hiprintTemplate.getHtml(printData));
+        })
+
+
+    </script>
+</body>
+</html>
