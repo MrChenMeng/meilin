@@ -11,7 +11,7 @@
     <artifactId>ruoyi-common</artifactId>
 
 	<properties>
-		<gson.version>2.8.5</gson.version>
+		<gson.version>2.8.9</gson.version>
 	</properties>
 	
 	<description>
